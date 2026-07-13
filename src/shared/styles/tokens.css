@@ -1,0 +1,135 @@
+:root {
+  /* Base colors */
+  --color-white: #ffffff;
+  --color-white-rgb: 255, 255, 255;
+  --color-black: #000000;
+  --color-black-rgb: 0, 0, 0;
+  --color-background: #f6faf7;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f8f6ed;
+  --color-surface-cream: #f8efe4;
+  --color-surface-cream-rgb: 248, 239, 228;
+  --color-border: #dce7df;
+  --color-border-error: #f3c2bd;
+  --color-border-success: #b7dec5;
+
+  /* Brand colors */
+  --color-primary: #006d33;
+  --color-primary-rgb: 0, 109, 51;
+  --color-primary-dark: #0b4507;
+  --color-primary-dark-rgb: 11, 69, 7;
+  --color-primary-soft: #e7f6ed;
+  --color-primary-muted: #d8dab5;
+  --color-primary-muted-rgb: 216, 218, 181;
+  --color-primary-icon: #acd0a4;
+  --color-primary-icon-rgb: 172, 208, 164;
+  --color-secondary: #f7b32b;
+
+  /* Text colors */
+  --color-text: #3e4a35;
+  --color-text-rgb: 62, 74, 53;
+  --color-text-muted: #5e6b5a;
+  --color-text-light: #ffffff;
+  --color-text-subtle: #819078;
+  --color-heading: #1a4f07;
+  --color-disabled: #9a9f92;
+
+  /* Semantic states */
+  --color-success: #168a4a;
+  --color-success-soft: #e7f6ed;
+  --color-warning: #7a4b00;
+  --color-warning-strong: #5c3700;
+  --color-warning-strong-rgb: 92, 55, 0;
+  --color-warning-soft: #fff7df;
+  --color-error: #ba1a1a;
+  --color-error-soft: #fff1f0;
+  --color-info: #2f648f;
+  --color-info-soft: #edf5fb;
+
+  /* Typography */
+  --font-family-base:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-family-heading: var(--font-family-base);
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 3rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extra-bold: 800;
+  --font-weight-black: 900;
+  --line-height-tight: 1.15;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.7;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-full: 999px;
+
+  /* Shadows */
+  --shadow-xs: 0 2px 8px rgba(31, 45, 27, 0.06);
+  --shadow-sm: 0 8px 24px rgba(26, 72, 48, 0.08);
+  --shadow-md: 0 14px 36px rgba(62, 74, 53, 0.08);
+  --shadow-lg: 0 18px 45px rgba(31, 45, 27, 0.16);
+  --shadow-control: 0 8px 18px rgba(62, 74, 53, 0.12);
+  --shadow-action: 0 10px 24px rgba(0, 50, 20, 0.22);
+  --shadow-focus: 0 0 0 3px var(--color-primary-soft);
+
+  /* Borders */
+  --border-width: 1px;
+  --border-default: var(--border-width) solid var(--color-border);
+  --border-error: var(--border-width) solid var(--color-border-error);
+  --border-success: var(--border-width) solid var(--color-border-success);
+
+  /* Layout */
+  --layout-max-width: 1120px;
+  --layout-wide-max-width: 1232px;
+  --layout-narrow-max-width: 560px;
+  --layout-page-padding: var(--space-4);
+  --header-height: 88px;
+  --topbar-height: 68px;
+
+  /* Transitions */
+  --transition-fast: 140ms ease;
+  --transition-normal: 220ms ease;
+  --transition-slow: 320ms ease;
+
+  /* Stacking */
+  --z-dropdown: 40;
+  --z-header: 20;
+  --z-modal: 1000;
+  --z-toast: 1100;
+
+  /* Visual states */
+  --opacity-disabled: 0.65;
+  --opacity-muted: 0.68;
+}
+
+/*
+ * Breakpoints are documented here but remain literal in media queries because
+ * CSS custom properties cannot be used in media-query conditions reliably.
+ * mobile: 480px | tablet: 768px | desktop: 1024px | wide: 1280px
+ */
