@@ -11,7 +11,13 @@ function getNavLinkClassName({ isActive }) {
 export default function App() {
   const { isAuthenticated, isEncargada } = useAuth();
   const location = useLocation();
-  const showShellHeader = location.pathname !== '/' && location.pathname !== '/admin/gestion-dia';
+  const usesAdminWorkspace = [
+    '/admin/gestion-dia',
+    '/admin/statistics',
+    '/admin/sales/manual',
+    '/admin/reports/weekly',
+  ].includes(location.pathname);
+  const showShellHeader = location.pathname !== '/' && !usesAdminWorkspace;
 
   return (
     <div className="app-shell">

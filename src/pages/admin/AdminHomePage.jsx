@@ -49,6 +49,39 @@ export function AdminHomePage() {
             </Link>
           </div>
         </Card>
+        <Card>
+          <div className="stack">
+            <div>
+              <h2 className="card__title">Estadísticas</h2>
+              <p className="card__meta">Consulta pedidos, ingresos y platillos destacados por periodo.</p>
+            </div>
+            <Link className="button button--primary" to="/admin/statistics">
+              Ver estadísticas
+            </Link>
+          </div>
+        </Card>
+        <Card>
+          <div className="stack">
+            <div>
+              <h2 className="card__title">Venta manual</h2>
+              <p className="card__meta">Registra ventas de mostrador que no provienen de un pedido.</p>
+            </div>
+            <Link className="button button--primary" to="/admin/sales/manual">
+              Registrar venta
+            </Link>
+          </div>
+        </Card>
+        <Card>
+          <div className="stack">
+            <div>
+              <h2 className="card__title">Reporte semanal</h2>
+              <p className="card__meta">Consulta el resumen de la semana y descarga el PDF oficial.</p>
+            </div>
+            <Link className="button button--primary" to="/admin/reports/weekly">
+              Abrir reporte
+            </Link>
+          </div>
+        </Card>
       </div>
     </main>
   );

@@ -1,7 +1,26 @@
 import { ENDPOINTS } from '../../shared/api/endpoints.js';
 import { getApiData } from '../../shared/api/apiResponse.js';
 import { httpClient } from '../../shared/api/httpClient.js';
-import { normalizeMenuItem, normalizeTodayMenu } from './menuModel.js';
+import { normalizeDish, normalizeMenuItem, normalizeTodayMenu } from './menuModel.js';
+
+export async function getAdminDishes() {
+  const response = await httpClient.get(ENDPOINTS.ADMIN_DISHES);
+  const dishes = getApiData(response);
+
+  return Array.isArray(dishes) ? dishes.map(normalizeDish).filter(Boolean) : [];
+}
+
+export async function createDish(payload) {
+  const response = await httpClient.post(ENDPOINTS.ADMIN_DISHES, payload);
+
+  return normalizeDish(getApiData(response));
+}
+
+export async function deleteDish(id) {
+  const response = await httpClient.delete(ENDPOINTS.ADMIN_DISH(id));
+
+  return normalizeDish(getApiData(response));
+}
 
 export async function getTodayMenu() {
   const response = await httpClient.get(ENDPOINTS.MENU_TODAY);

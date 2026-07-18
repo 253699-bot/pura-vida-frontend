@@ -1,5 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminHomePage } from '../pages/admin/AdminHomePage.jsx';
+import { AdminManualSalesPage } from '../pages/admin/AdminManualSalesPage.jsx';
+import { AdminStatisticsPage } from '../pages/admin/AdminStatisticsPage.jsx';
+import { AdminWeeklyReportPage } from '../pages/admin/AdminWeeklyReportPage.jsx';
 import { DailyManagementPage } from '../pages/admin/DailyManagementPage.jsx';
 import { AdminMenuPage } from '../pages/admin/AdminMenuPage.jsx';
 import { BusinessStatusPage } from '../pages/admin/BusinessStatusPage.jsx';
@@ -84,6 +87,30 @@ export function AppRouter() {
         element={
           <ProtectedRoute roles={encargadaOnly}>
             <AdminMenuPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/statistics"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminStatisticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/sales/manual"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminManualSalesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/reports/weekly"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminWeeklyReportPage />
           </ProtectedRoute>
         }
       />

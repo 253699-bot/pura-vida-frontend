@@ -3,6 +3,7 @@ import {
   BarChart3,
   ChefHat,
   Coffee,
+  FileText,
   House,
   Leaf,
   Pencil,
@@ -31,8 +32,9 @@ const SIDE_NAVIGATION = [
   { icon: House, label: 'Dashboard', to: '/admin' },
   { icon: ShoppingCart, label: 'Órdenes', disabled: true },
   { icon: Utensils, label: 'Menú diario', active: true },
-  { icon: BarChart3, label: 'Reportes', disabled: true },
-  { icon: Wallet, label: 'Ventas', disabled: true },
+  { icon: BarChart3, label: 'Estadísticas', to: '/admin/statistics' },
+  { icon: FileText, label: 'Reporte semanal', to: '/admin/reports/weekly' },
+  { icon: Wallet, label: 'Ventas manuales', to: '/admin/sales/manual' },
 ];
 
 const MENU_ITEM_VISUALS = {

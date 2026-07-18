@@ -14,6 +14,23 @@ export function normalizeMenuItem(item) {
   };
 }
 
+export function normalizeDish(dish) {
+  if (!dish) {
+    return null;
+  }
+
+  return {
+    id: dish.id ?? null,
+    nombre: dish.nombre ?? 'Platillo sin nombre',
+    descripcion: dish.descripcion ?? '',
+    tipoPlatillo: dish.tipoPlatillo ?? 'platillo_fuerte',
+    precioBase: Number(dish.precioBase || 0),
+    activo: Boolean(dish.activo),
+    creadoEn: dish.creadoEn ?? null,
+    actualizadoEn: dish.actualizadoEn ?? null,
+  };
+}
+
 export function normalizeTodayMenu(menu) {
   return {
     configured: Boolean(menu?.configured),

@@ -5,4 +5,11 @@ export const ENDPOINTS = {
   BUSINESS_STATUS_TODAY: '/business/status/today',
   MENU_TODAY: '/menu/today',
   MENU_ITEM_AVAILABILITY: (id) => `/menu/today/items/${id}/availability`,
+  ADMIN_DISHES: '/admin/dishes',
+  ADMIN_DISH: (id) => `/admin/dishes/${id}`,
+  ADMIN_DASHBOARD_SUMMARY: '/admin/dashboard/summary',
+  ADMIN_DASHBOARD_TOP_DISHES: '/admin/dashboard/top-dishes',
+  ADMIN_MANUAL_SALES: '/admin/sales/manual',
+  ADMIN_WEEKLY_REPORT_SUMMARY: '/admin/reports/weekly/summary',
+  ADMIN_WEEKLY_REPORT_PDF: '/admin/reports/weekly/pdf',
 };
