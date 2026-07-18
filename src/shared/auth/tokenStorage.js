@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'puraVida.auth.token';
 const USER_KEY = 'puraVida.auth.user';
+export const SESSION_EXPIRED_EVENT = 'puraVida.auth.expired';
 
 function canUseLocalStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { login as loginUser, register as registerUser } from '../../entities/usuario/userApi.js';
 import { normalizeUser, userIsEncargada } from '../../entities/usuario/userModel.js';
 import {
@@ -7,12 +7,24 @@ import {
   getToken,
   saveToken,
   saveUser,
+  SESSION_EXPIRED_EVENT,
 } from '../../shared/auth/tokenStorage.js';
 import { AuthContext } from '../../shared/hooks/useAuth.js';
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getToken());
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
+
+  useEffect(() => {
+    function handleSessionExpired() {
+      setToken(null);
+      setUser(null);
+    }
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, []);
 
   async function login(credentials) {
     const authData = await loginUser(credentials);
@@ -39,6 +51,17 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  const updateUser = useCallback((nextUser) => {
+    const normalizedUser = normalizeUser(nextUser);
+
+    if (!normalizedUser) {
+      return;
+    }
+
+    saveUser(normalizedUser);
+    setUser(normalizedUser);
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -48,6 +71,7 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      updateUser,
     }),
     [token, user],
   );

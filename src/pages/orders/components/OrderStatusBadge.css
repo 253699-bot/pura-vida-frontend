@@ -1,0 +1,37 @@
+.order-status {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 28px;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-extra-bold);
+}
+
+.order-status--pending {
+  color: var(--color-warning);
+  background: var(--color-surface-cream);
+}
+
+.order-status--accepted {
+  color: var(--color-primary-dark);
+  background: var(--color-success-soft);
+}
+
+.order-status--completed {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+
+.order-status--rejected {
+  color: var(--color-error);
+  background: var(--color-error-soft);
+}
+
+.order-status--cancelled,
+.order-status--neutral {
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+}

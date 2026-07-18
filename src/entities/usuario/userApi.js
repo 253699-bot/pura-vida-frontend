@@ -18,3 +18,15 @@ export async function register(payload) {
 
   return normalizeUser(getApiData(response));
 }
+
+export async function getMyProfile() {
+  const response = await httpClient.get(ENDPOINTS.ME);
+
+  return normalizeUser(getApiData(response));
+}
+
+export async function updateMyProfile(payload) {
+  const response = await httpClient.patch(ENDPOINTS.ME, payload);
+
+  return normalizeUser(getApiData(response));
+}

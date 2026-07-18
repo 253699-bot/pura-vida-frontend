@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutGrid, Store, UserCircle } from 'lucide-react';
+import { LayoutGrid, ShoppingCart, Store, UserCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getTodayBusinessStatus } from '../../entities/business/businessApi.js';
+import { addCartItem } from '../../entities/cart/cartApi.js';
 import { getTodayMenu } from '../../entities/menu/menuApi.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
+import { CART_UPDATED_EVENT } from '../../shared/constants/events.js';
 import { useAuth } from '../../shared/hooks/useAuth.js';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
+import { formatDate } from '../../shared/utils/date.js';
 import { MenuDishCard, MENU_TYPE_DETAILS } from './components/MenuDishCard.jsx';
 import './MenuPage.css';
 
@@ -66,14 +69,19 @@ function getBusinessStatusView(status, hasError, isLoading) {
 }
 
 export function MenuPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isEncargada } = useAuth();
   const [businessStatus, setBusinessStatus] = useState(null);
   const [menu, setMenu] = useState(null);
   const [error, setError] = useState('');
   const [hasStatusError, setHasStatusError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('todos');
+  const [itemOperations, setItemOperations] = useState({});
   const businessStatusView = getBusinessStatusView(businessStatus, hasStatusError, isLoading);
+  const canUseCart = isAuthenticated && !isEncargada;
+  const canOrder = Boolean(
+    canUseCart && businessStatus?.configured && businessStatus.abierto === true,
+  );
 
   const visibleItems = useMemo(() => {
     if (!menu?.items) {
@@ -123,6 +131,50 @@ export function MenuPage() {
     };
   }, []);
 
+  async function handleAddToCart(item, cantidad) {
+    const key = item.id ?? item.platilloId;
+
+    if (!key || itemOperations[key]?.status === 'loading') {
+      return;
+    }
+
+    if (!item.platilloId) {
+      setItemOperations((current) => ({
+        ...current,
+        [key]: {
+          status: 'error',
+          message: 'No fue posible identificar este platillo.',
+        },
+      }));
+      return;
+    }
+
+    setItemOperations((current) => ({
+      ...current,
+      [key]: { status: 'loading', message: '' },
+    }));
+
+    try {
+      await addCartItem(item.platilloId, cantidad);
+      setItemOperations((current) => ({
+        ...current,
+        [key]: {
+          status: 'success',
+          message: `${item.nombre} se agregó al carrito.`,
+        },
+      }));
+      window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+    } catch (requestError) {
+      setItemOperations((current) => ({
+        ...current,
+        [key]: {
+          status: 'error',
+          message: getApiMessage(requestError, 'No se pudo agregar el platillo al carrito.'),
+        },
+      }));
+    }
+  }
+
   return (
     <main className="public-menu">
       <header className="public-menu__intro">
@@ -132,6 +184,9 @@ export function MenuPage() {
             Disfruta de nuestros platillos caseros preparados con ingredientes locales y frescos.
             Sabor auténtico para nutrir tu día.
           </p>
+          {menu?.fecha ? (
+            <span className="public-menu__date">Menú para {formatDate(menu.fecha)}</span>
+          ) : null}
           <div
             className={`public-menu__business-status public-menu__business-status--${businessStatusView.tone}`}
           >
@@ -144,14 +199,32 @@ export function MenuPage() {
         </div>
 
         <aside className="public-menu__order-note">
-          <UserCircle size={26} strokeWidth={2} aria-hidden="true" />
+          {canUseCart ? (
+            <ShoppingCart size={26} strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <UserCircle size={26} strokeWidth={2} aria-hidden="true" />
+          )}
           <div>
             <strong>
-              {isAuthenticated ? 'Pedidos en línea próximamente' : 'Inicia sesión para realizar pedidos'}
+              {canUseCart
+                ? 'Arma tu pedido'
+                : isEncargada
+                  ? 'Consulta el menú publicado'
+                  : 'Inicia sesión para realizar pedidos'}
             </strong>
-            <span>Esta opción se habilitará cuando el backend de pedidos esté disponible.</span>
+            <span>
+              {canUseCart
+                ? canOrder
+                  ? 'Agrega platillos disponibles y confirma tu pedido desde el carrito.'
+                  : 'Los pedidos se habilitan cuando la fonda está abierta.'
+                : isEncargada
+                  ? 'Las acciones de compra están disponibles únicamente para clientes.'
+                : 'Accede a tu cuenta para agregar platillos al carrito.'}
+            </span>
           </div>
-          {!isAuthenticated ? <Link to="/login">Iniciar sesión</Link> : null}
+          <Link to={canUseCart ? '/carrito' : isEncargada ? '/admin' : '/login'}>
+            {canUseCart ? 'Ver carrito' : isEncargada ? 'Volver al panel' : 'Iniciar sesión'}
+          </Link>
         </aside>
       </header>
 
@@ -198,7 +271,15 @@ export function MenuPage() {
         {visibleItems.length ? (
           <div className="public-menu__grid">
             {visibleItems.map((item) => (
-              <MenuDishCard item={item} key={item.id || item.platilloId} />
+              <MenuDishCard
+                item={item}
+                isAuthenticated={isAuthenticated}
+                canUseCart={canUseCart}
+                canOrder={canOrder}
+                onAdd={handleAddToCart}
+                operation={itemOperations[item.id ?? item.platilloId]}
+                key={item.id || item.platilloId}
+              />
             ))}
           </div>
         ) : null}
