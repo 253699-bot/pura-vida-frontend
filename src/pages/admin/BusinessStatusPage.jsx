@@ -1,3 +1,4 @@
+import { Clock3, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getTodayBusinessStatus } from '../../entities/business/businessApi.js';
 import { BusinessStatusForm } from '../../features/business/update-status/BusinessStatusForm.jsx';
@@ -6,6 +7,8 @@ import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { Card } from '../../shared/ui/Card.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
+import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
+import './BusinessStatusPage.css';
 
 export function BusinessStatusPage() {
   const [status, setStatus] = useState(null);
@@ -41,24 +44,47 @@ export function BusinessStatusPage() {
   }, []);
 
   return (
-    <main className="page">
-      <header className="page__header">
-        <h1 className="page__title">Estado de fonda</h1>
-        <p className="page__subtitle">Actualiza si PuraVida esta abierta o cerrada hoy.</p>
-      </header>
-      {isLoading ? <Loading label="Cargando estado..." /> : null}
-      <ErrorMessage message={error} />
-      {status ? (
-        <div className="section-grid">
-          <BusinessStatusCard status={status} />
-          <Card>
-            <div className="stack">
-              <h2 className="card__title">Actualizar estado</h2>
-              <BusinessStatusForm status={status} onUpdated={setStatus} />
+    <div className="business-status-layout">
+      <AdminWorkspaceSidebar activePath="/admin/status" />
+
+      <main className="business-status-page">
+        <header className="business-status-page__header">
+          <span className="business-status-page__heading-icon" aria-hidden="true">
+            <Store size={28} />
+          </span>
+          <div>
+            <p>Operación diaria</p>
+            <h1>Estado del negocio</h1>
+            <span>Comunica si PuraVida se encuentra abierta o cerrada durante el día.</span>
+          </div>
+        </header>
+
+        <div className="business-status-page__content">
+          <aside className="business-status-page__notice">
+            <Clock3 size={21} aria-hidden="true" />
+            <p>Los cambios guardados se reflejan en el menú público y en la disponibilidad para recibir pedidos.</p>
+          </aside>
+
+          {isLoading ? <Loading label="Cargando estado del negocio..." /> : null}
+          <ErrorMessage title="Estado no disponible" message={error} />
+
+          {status ? (
+            <div className="business-status-grid">
+              <div className="business-status-current">
+                <BusinessStatusCard status={status} />
+              </div>
+              <Card className="business-status-editor">
+                <div className="business-status-editor__heading">
+                  <span>Configuración</span>
+                  <h2>Actualizar estado</h2>
+                  <p>Selecciona la condición del servicio y guarda el cambio para hoy.</p>
+                </div>
+                <BusinessStatusForm status={status} onUpdated={setStatus} />
+              </Card>
             </div>
-          </Card>
+          ) : null}
         </div>
-      ) : null}
-    </main>
+      </main>
+    </div>
   );
 }

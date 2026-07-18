@@ -57,6 +57,7 @@ export default function App() {
     '/admin/gestion-dia',
     '/admin/menu',
     '/admin/pedidos',
+    '/admin/status',
     '/admin/statistics',
     '/admin/sales/manual',
     '/admin/reports/weekly',

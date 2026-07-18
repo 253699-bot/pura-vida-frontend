@@ -1,0 +1,233 @@
+.business-status-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #fbf8f3;
+}
+
+.business-status-page {
+  min-width: 0;
+  flex: 1;
+}
+
+.business-status-page__header {
+  display: flex;
+  min-height: 128px;
+  align-items: center;
+  gap: 16px;
+  padding: 28px clamp(24px, 5vw, 68px);
+  border-bottom: 1px solid #eadfce;
+  background: #fffdf9;
+}
+
+.business-status-page__heading-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  border-radius: 14px;
+  background: #e9f5ee;
+  color: #2f7950;
+}
+
+.business-status-page__header p,
+.business-status-editor__heading > span {
+  margin: 0 0 4px;
+  color: #a65f1a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.business-status-page__header h1 {
+  margin: 0;
+  color: #2d2824;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 3vw, 2.55rem);
+}
+
+.business-status-page__header div > span {
+  display: block;
+  margin-top: 6px;
+  color: #776d64;
+}
+
+.business-status-page__content {
+  display: grid;
+  width: min(1040px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 32px 0 64px;
+  gap: 22px;
+}
+
+.business-status-page__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 18px;
+  border: 1px solid #efd4a6;
+  border-radius: 10px;
+  background: #fff8e9;
+  color: #755023;
+}
+
+.business-status-page__notice svg {
+  flex: 0 0 auto;
+}
+
+.business-status-page__notice p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.business-status-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.78fr) minmax(340px, 1.22fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.business-status-current > .card,
+.business-status-editor {
+  border: 1px solid #eadfce;
+  border-radius: 14px;
+  padding: clamp(24px, 4vw, 32px);
+  background: #fff;
+  box-shadow: 0 10px 28px rgb(88 61 30 / 7%);
+}
+
+.business-status-current > .card {
+  position: relative;
+  overflow: hidden;
+  min-height: 250px;
+}
+
+.business-status-current > .card::after {
+  position: absolute;
+  right: -44px;
+  bottom: -48px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: #eef5e9;
+  content: '';
+}
+
+.business-status-current .stack {
+  position: relative;
+  z-index: 1;
+  gap: 18px;
+}
+
+.business-status-current .status-pill {
+  padding: 7px 12px;
+  font-size: 0.78rem;
+}
+
+.business-status-current .card__title {
+  margin-bottom: 4px;
+  color: #332d28;
+  font-size: 1.35rem;
+}
+
+.business-status-current .card__meta {
+  color: #81766d;
+  line-height: 1.55;
+}
+
+.business-status-editor {
+  display: grid;
+  gap: 24px;
+}
+
+.business-status-editor__heading h2 {
+  margin: 4px 0 5px;
+  color: #332d28;
+  font-size: 1.35rem;
+}
+
+.business-status-editor__heading p {
+  margin: 0;
+  color: #81766d;
+  font-size: 0.88rem;
+}
+
+.business-status-editor .form {
+  gap: 20px;
+}
+
+.business-status-editor fieldset {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.business-status-editor .segmented {
+  padding: 4px;
+  border-radius: 10px;
+  background: #f7f4ef;
+}
+
+.business-status-editor .segmented__option {
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.business-status-editor .segmented__option:has(input:checked) {
+  border-color: #b9dfc7;
+  background: #fff;
+  color: #267449;
+  box-shadow: 0 3px 10px rgb(65 80 58 / 8%);
+}
+
+.business-status-editor .textarea:disabled {
+  color: #93887e;
+  background: #f7f4ef;
+  opacity: 1;
+}
+
+.business-status-editor .button {
+  justify-self: start;
+  min-width: 170px;
+}
+
+@media (max-width: 900px) {
+  .business-status-layout {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 760px) {
+  .business-status-page__header {
+    align-items: flex-start;
+    padding: 22px 20px;
+  }
+
+  .business-status-page__content {
+    width: min(100% - 28px, 1040px);
+    padding-top: 20px;
+  }
+
+  .business-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .business-status-page__heading-icon {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+
+  .business-status-current > .card,
+  .business-status-editor {
+    padding: 22px;
+  }
+
+  .business-status-editor .button {
+    width: 100%;
+  }
+}
