@@ -1,9 +1,11 @@
 import {
   BarChart3,
+  ClipboardList,
   FileText,
   LayoutDashboard,
   Menu as MenuIcon,
   ShoppingBag,
+  Store,
   WalletCards,
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
@@ -14,10 +16,12 @@ import './AdminWorkspaceSidebar.css';
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin' },
   { icon: ShoppingBag, label: 'Gestión del día', to: '/admin/gestion-dia' },
+  { icon: ClipboardList, label: 'Pedidos', to: '/admin/pedidos' },
   { icon: MenuIcon, label: 'Menú', to: '/admin/menu' },
   { icon: BarChart3, label: 'Estadísticas', to: '/admin/statistics' },
-  { icon: FileText, label: 'Reporte semanal', to: '/admin/reports/weekly' },
   { icon: WalletCards, label: 'Ventas manuales', to: '/admin/sales/manual' },
+  { icon: FileText, label: 'Reporte semanal', to: '/admin/reports/weekly' },
+  { icon: Store, label: 'Estado del negocio', to: '/admin/status' },
 ];
 
 export function AdminWorkspaceSidebar({ activePath }) {

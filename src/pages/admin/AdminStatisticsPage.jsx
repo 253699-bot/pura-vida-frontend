@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3,
   Bell,
   CalendarDays,
   ClipboardList,
-  FileText,
-  House,
-  ShoppingCart,
   Utensils,
   Wallet,
 } from 'lucide-react';
@@ -16,28 +12,18 @@ import {
   getWeeklyStatistics,
 } from '../../entities/statistics/statisticsApi.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
-import brandLogo from '../../shared/assets/brand/pura-vida-logo.svg';
-import { useAuth } from '../../shared/hooks/useAuth.js';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
 import { formatCurrency } from '../../shared/utils/currency.js';
 import { formatDate } from '../../shared/utils/date.js';
+import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
 import './AdminStatisticsPage.css';
 
 const STATISTICS_MODES = [
   { id: 'week', label: 'Esta semana' },
   { id: 'month', label: 'Este mes' },
   { id: 'range', label: 'Rango', icon: CalendarDays },
-];
-
-const STATISTICS_NAVIGATION = [
-  { icon: House, label: 'Dashboard', to: '/admin' },
-  { icon: ShoppingCart, label: 'Órdenes', disabled: true },
-  { icon: Utensils, label: 'Menú diario', to: '/admin/gestion-dia' },
-  { icon: BarChart3, label: 'Estadísticas', to: '/admin/statistics', active: true },
-  { icon: FileText, label: 'Reporte semanal', to: '/admin/reports/weekly' },
-  { icon: Wallet, label: 'Ventas manuales', to: '/admin/sales/manual' },
 ];
 
 function toIsoDate(date) {
@@ -163,7 +149,6 @@ function OrderStatusPanel({ orders }) {
 }
 
 export function AdminStatisticsPage() {
-  const { user } = useAuth();
   const [mode, setMode] = useState('week');
   const [rangeDraft, setRangeDraft] = useState(createDefaultRange);
   const [appliedRange, setAppliedRange] = useState(createDefaultRange);
@@ -247,51 +232,7 @@ export function AdminStatisticsPage() {
 
   return (
     <div className="statistics-page">
-      <aside className="statistics-sidebar" aria-label="Navegación administrativa">
-        <Link className="statistics-sidebar__brand" to="/" aria-label="PuraVida inicio">
-          <img src={brandLogo} alt="PuraVida" />
-        </Link>
-        <nav className="statistics-sidebar__nav">
-          {STATISTICS_NAVIGATION.map((item) => {
-            const Icon = item.icon;
-
-            if (item.disabled) {
-              return (
-                <button
-                  type="button"
-                  className="statistics-sidebar__item statistics-sidebar__item--disabled"
-                  disabled
-                  title="Próximamente"
-                  key={item.label}
-                >
-                  <Icon size={21} strokeWidth={2} aria-hidden="true" />
-                  {item.label}
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                className={`statistics-sidebar__item ${item.active ? 'statistics-sidebar__item--active' : ''}`.trim()}
-                to={item.to}
-                key={item.label}
-              >
-                <Icon size={21} strokeWidth={2} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="statistics-sidebar__user">
-          <span className="statistics-sidebar__avatar" aria-hidden="true">
-            {(user?.nombre || user?.correo || 'E').slice(0, 1).toUpperCase()}
-          </span>
-          <span>
-            <strong>{user?.nombre || 'Encargada'}</strong>
-            <small>Encargada</small>
-          </span>
-        </div>
-      </aside>
+      <AdminWorkspaceSidebar activePath="/admin/statistics" />
 
       <main className="statistics-page__main">
         <div className="statistics-page__utility">

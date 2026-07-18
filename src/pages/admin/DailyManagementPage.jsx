@@ -1,41 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3,
   ChefHat,
   Coffee,
-  FileText,
-  House,
   Leaf,
   Pencil,
   Plus,
-  ShoppingCart,
   Store,
   Trash2,
   Utensils,
-  Wallet,
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getTodayBusinessStatus, updateTodayBusinessStatus } from '../../entities/business/businessApi.js';
 import { getTodayMenu, updateMenuItemAvailability } from '../../entities/menu/menuApi.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
-import brandLogo from '../../shared/assets/brand/pura-vida-logo.svg';
-import { useAuth } from '../../shared/hooks/useAuth.js';
 import { formatDate } from '../../shared/utils/date.js';
 import { formatCurrency } from '../../shared/utils/currency.js';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
+import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
 import './DailyManagementPage.css';
-
-const SIDE_NAVIGATION = [
-  { icon: House, label: 'Dashboard', to: '/admin' },
-  { icon: ShoppingCart, label: 'Órdenes', disabled: true },
-  { icon: Utensils, label: 'Menú diario', active: true },
-  { icon: BarChart3, label: 'Estadísticas', to: '/admin/statistics' },
-  { icon: FileText, label: 'Reporte semanal', to: '/admin/reports/weekly' },
-  { icon: Wallet, label: 'Ventas manuales', to: '/admin/sales/manual' },
-];
 
 const MENU_ITEM_VISUALS = {
   platillo_fuerte: { icon: Utensils, label: 'Plato fuerte' },
@@ -112,7 +97,6 @@ function DailyMenuRow({ item, isUpdating, onToggle }) {
 }
 
 export function DailyManagementPage() {
-  const { user } = useAuth();
   const [status, setStatus] = useState(null);
   const [menu, setMenu] = useState(null);
   const [statusError, setStatusError] = useState('');
@@ -240,66 +224,28 @@ export function DailyManagementPage() {
 
   return (
     <div className="daily-management">
-      <aside className="daily-sidebar" aria-label="Navegación administrativa">
-        <Link className="daily-sidebar__brand" to="/" aria-label="PuraVida inicio">
-          <img src={brandLogo} alt="PuraVida" />
-        </Link>
-        <nav className="daily-sidebar__nav">
-          {SIDE_NAVIGATION.map((item) => {
-            const Icon = item.icon;
-
-            if (item.disabled) {
-              return (
-                <button
-                  type="button"
-                  className="daily-sidebar__item daily-sidebar__item--disabled"
-                  disabled
-                  title="Próximamente"
-                  key={item.label}
-                >
-                  <Icon size={21} strokeWidth={2} aria-hidden="true" />
-                  {item.label}
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                className={`daily-sidebar__item ${item.active ? 'daily-sidebar__item--active' : ''}`.trim()}
-                to={item.to || '/admin/gestion-dia'}
-                key={item.label}
-              >
-                <Icon size={21} strokeWidth={2} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="daily-sidebar__user">
-          <span className="daily-sidebar__avatar" aria-hidden="true">
-            {(user?.nombre || user?.correo || 'E').slice(0, 1).toUpperCase()}
-          </span>
-          <span>
-            <strong>{user?.nombre || 'Encargada'}</strong>
-            <small>Encargada</small>
-          </span>
-        </div>
-      </aside>
+      <AdminWorkspaceSidebar activePath="/admin/gestion-dia" />
 
       <main className="daily-management__main">
         <header className="daily-management__header">
-          <p className="daily-management__eyebrow">Operación diaria</p>
-          <h1>Gestión del día</h1>
-          <p>Administra la operación diaria de tu fonda y el menú disponible para hoy.</p>
+          <span className="daily-management__heading-icon" aria-hidden="true">
+            <Store size={28} />
+          </span>
+          <div>
+            <p className="daily-management__eyebrow">Operación diaria</p>
+            <h1>Gestión del día</h1>
+            <p>Administra la operación de la fonda y el menú disponible para hoy.</p>
+          </div>
         </header>
 
-        {isLoading ? <Loading label="Cargando gestión del día..." /> : null}
-        <ErrorMessage message={statusError} />
-        <ErrorMessage message={menuError} />
-        <ErrorMessage message={actionError} />
-        {successMessage ? <div className="message message--success">{successMessage}</div> : null}
+        <div className="daily-management__content">
+          {isLoading ? <Loading label="Cargando gestión del día..." /> : null}
+          <ErrorMessage message={statusError} />
+          <ErrorMessage message={menuError} />
+          <ErrorMessage message={actionError} />
+          {successMessage ? <div className="message message--success">{successMessage}</div> : null}
 
-        {!isLoading && status ? (
+          {!isLoading && status ? (
           <section className="daily-status" aria-labelledby="daily-status-title">
             <div className="daily-status__summary">
               <span className={`daily-status__icon daily-status__icon--${statusPresentation.tone}`} aria-hidden="true">
@@ -362,9 +308,9 @@ export function DailyManagementPage() {
               </form>
             ) : null}
           </section>
-        ) : null}
+          ) : null}
 
-        {!isLoading ? (
+          {!isLoading ? (
           <section className="daily-menu" aria-labelledby="daily-menu-title">
             <header className="daily-menu__header">
               <div>
@@ -399,12 +345,13 @@ export function DailyManagementPage() {
               </div>
             ) : null}
           </section>
-        ) : null}
+          ) : null}
 
-        <p className="daily-management__notice">
-          Los cambios de disponibilidad se reflejan inmediatamente en el menú público para tus
-          clientes.
-        </p>
+          <p className="daily-management__notice">
+            Los cambios de disponibilidad se reflejan inmediatamente en el menú público para tus
+            clientes.
+          </p>
+        </div>
       </main>
     </div>
   );

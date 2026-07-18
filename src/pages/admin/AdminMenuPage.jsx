@@ -21,6 +21,7 @@ import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
 import { formatCurrency } from '../../shared/utils/currency.js';
+import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
 import './AdminMenuPage.css';
 
 const DISH_PRESENTATION = {
@@ -187,26 +188,35 @@ export function AdminMenuPage() {
   }
 
   return (
-    <main className="page admin-menu-page">
-      <header className="admin-menu-header">
-        <div>
-          <p className="admin-menu-header__eyebrow">Menú y catálogo</p>
-          <h1 className="page__title">Administración de platillos</h1>
-          <p className="page__subtitle">Crea platillos, consulta el catálogo activo y configura el menú del día.</p>
-        </div>
-        <Button onClick={() => {
-          setSuccessMessage('');
-          setIsCreateOpen(true);
-        }}>
-          <Plus size={18} aria-hidden="true" />
-          Agregar platillo
-        </Button>
-      </header>
+    <div className="admin-menu-layout">
+      <AdminWorkspaceSidebar activePath="/admin/menu" />
 
-      <ErrorMessage message={dishesError} />
-      {successMessage ? <div className="message message--success" role="status">{successMessage}</div> : null}
+      <main className="admin-menu-page">
+        <header className="admin-menu-header">
+          <div className="admin-menu-header__title">
+            <span className="admin-menu-header__icon" aria-hidden="true">
+              <Utensils size={28} />
+            </span>
+            <div>
+              <p className="admin-menu-header__eyebrow">Menú y catálogo</p>
+              <h1>Administración de platillos</h1>
+              <span>Crea platillos, consulta el catálogo activo y configura el menú del día.</span>
+            </div>
+          </div>
+          <Button onClick={() => {
+            setSuccessMessage('');
+            setIsCreateOpen(true);
+          }}>
+            <Plus size={18} aria-hidden="true" />
+            Agregar platillo
+          </Button>
+        </header>
 
-      <section className="admin-dishes" aria-labelledby="admin-dishes-title">
+        <div className="admin-menu-page__content">
+          <ErrorMessage message={dishesError} />
+          {successMessage ? <div className="message message--success" role="status">{successMessage}</div> : null}
+
+          <section className="admin-dishes" aria-labelledby="admin-dishes-title">
         <div className="admin-dishes__heading">
           <div>
             <h2 id="admin-dishes-title">Catálogo activo</h2>
@@ -226,9 +236,9 @@ export function AdminMenuPage() {
             ))}
           </div>
         ) : null}
-      </section>
+          </section>
 
-      <section className="admin-today-menu" aria-labelledby="admin-today-menu-title">
+          <section className="admin-today-menu" aria-labelledby="admin-today-menu-title">
         <div className="admin-dishes__heading">
           <div>
             <h2 id="admin-today-menu-title">Publicar menú del día</h2>
@@ -260,25 +270,27 @@ export function AdminMenuPage() {
             </div>
           </div>
         ) : null}
-      </section>
+          </section>
+        </div>
 
-      {isCreateOpen ? (
-        <CreateDishDialog onClose={() => setIsCreateOpen(false)} onCreated={handleDishCreated} />
-      ) : null}
-      {createdDish ? <DishCreatedDialog dish={createdDish} onClose={() => setCreatedDish(null)} /> : null}
-      {editingDish ? <EditDishDialog dish={editingDish} onClose={() => setEditingDish(null)} /> : null}
-      {deletingDish ? (
-        <DeleteDishDialog
-          dish={deletingDish}
-          isDeleting={isDeleting}
-          error={deleteError}
-          onClose={() => {
-            setDeleteError('');
-            setDeletingDish(null);
-          }}
-          onConfirm={handleConfirmDelete}
-        />
-      ) : null}
-    </main>
+        {isCreateOpen ? (
+          <CreateDishDialog onClose={() => setIsCreateOpen(false)} onCreated={handleDishCreated} />
+        ) : null}
+        {createdDish ? <DishCreatedDialog dish={createdDish} onClose={() => setCreatedDish(null)} /> : null}
+        {editingDish ? <EditDishDialog dish={editingDish} onClose={() => setEditingDish(null)} /> : null}
+        {deletingDish ? (
+          <DeleteDishDialog
+            dish={deletingDish}
+            isDeleting={isDeleting}
+            error={deleteError}
+            onClose={() => {
+              setDeleteError('');
+              setDeletingDish(null);
+            }}
+            onConfirm={handleConfirmDelete}
+          />
+        ) : null}
+      </main>
+    </div>
   );
 }
