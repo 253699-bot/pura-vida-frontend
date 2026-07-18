@@ -8,6 +8,8 @@ const STATUS_PRESENTATION = {
   accepted: { label: 'Aceptado', tone: 'accepted' },
   rejected: { label: 'Rechazado', tone: 'rejected' },
   completed: { label: 'Finalizado', tone: 'completed' },
+  cancelled: { label: 'Cancelado', tone: 'cancelled' },
+  neutral: { label: 'Estado no disponible', tone: 'neutral' },
 };
 
 const STATUS_ALIASES = {
@@ -20,10 +22,12 @@ const STATUS_ALIASES = {
   entregado: 'completed',
   finalizado: 'completed',
   completed: 'completed',
+  cancelado: 'cancelled',
+  cancelled: 'cancelled',
 };
 
 function getStatusPresentation(status) {
-  const normalizedStatus = STATUS_ALIASES[String(status || '').toLowerCase()] || 'pending';
+  const normalizedStatus = STATUS_ALIASES[String(status || '').toLowerCase()] || 'neutral';
 
   return {
     key: normalizedStatus,
@@ -56,6 +60,7 @@ export function OrderCard({
   isUpdating = false,
   onAccept,
   onReject,
+  onComplete,
 }) {
   const status = getStatusPresentation(order.status);
   const items = Array.isArray(order.items) ? order.items : [];
@@ -85,7 +90,9 @@ export function OrderCard({
             {item.subtotal !== undefined ? <strong>{formatCurrency(item.subtotal)}</strong> : null}
           </div>
         ))}
-        {!items.length ? <p className="admin-order-card__no-items">Sin detalle de platillos.</p> : null}
+        {!items.length ? (
+          <p className="admin-order-card__no-items">Sin detalle de platillos en el resumen.</p>
+        ) : null}
       </div>
 
       {order.notes ? (
@@ -110,7 +117,7 @@ export function OrderCard({
           <Button
             onClick={() => onAccept?.(order)}
             disabled={!actionsAvailable || isUpdating}
-            title={!actionsAvailable ? 'Disponible cuando exista el endpoint de pedidos' : undefined}
+            title={!actionsAvailable ? 'Hay otra actualización en curso' : undefined}
           >
             {isUpdating ? 'Actualizando...' : 'Aceptar'}
           </Button>
@@ -118,9 +125,21 @@ export function OrderCard({
             variant="danger"
             onClick={() => onReject?.(order)}
             disabled={!actionsAvailable || isUpdating}
-            title={!actionsAvailable ? 'Disponible cuando exista el endpoint de pedidos' : undefined}
+            title={!actionsAvailable ? 'Hay otra actualización en curso' : undefined}
           >
             Rechazar
+          </Button>
+        </div>
+      ) : null}
+
+      {status.key === 'accepted' ? (
+        <div className="admin-order-card__actions admin-order-card__actions--single">
+          <Button
+            onClick={() => onComplete?.(order)}
+            disabled={!actionsAvailable || isUpdating}
+            title={!actionsAvailable ? 'Acción no disponible' : undefined}
+          >
+            {isUpdating ? 'Finalizando...' : 'Finalizar pedido'}
           </Button>
         </div>
       ) : null}

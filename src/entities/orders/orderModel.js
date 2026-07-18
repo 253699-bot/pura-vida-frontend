@@ -60,6 +60,45 @@ export function normalizeOrderSummary(order) {
   return summary;
 }
 
+function combineOrderDateTime(fecha, hora) {
+  if (fecha && hora) {
+    return `${fecha}T${hora}`;
+  }
+
+  return fecha || hora || null;
+}
+
+export function normalizeAdminOrder(order) {
+  if (!order) {
+    return null;
+  }
+
+  const backendOrder = {
+    ...order,
+    id: order.id ?? order.idPedido ?? null,
+    estado: order.estado ?? order.status,
+  };
+  const normalized = normalizeOrder(backendOrder);
+
+  return {
+    ...order,
+    id: normalized.id,
+    status: normalized.estado,
+    customerName: normalized.clienteNombre || order.customerName || '',
+    createdAt: order.createdAt || combineOrderDateTime(normalized.fecha, normalized.hora),
+    total: normalized.total,
+    source: order.origen ?? order.source ?? null,
+    notes: normalized.notas,
+    rejectionReason: normalized.motivoRechazo,
+    items: normalized.items.map((item) => ({
+      ...item,
+      name: item.nombre,
+      quantity: item.cantidad,
+    })),
+    raw: order,
+  };
+}
+
 export function getOrderStatusDetails(status) {
   return ORDER_STATUS_DETAILS[status] || { label: 'Estado no disponible', tone: 'neutral' };
 }
