@@ -12,6 +12,7 @@ export function normalizeUser(user) {
     telefono: user.telefono ?? '',
     rol: user.rol ?? USER_ROLES.CLIENTE,
     iconoPerfil: user.iconoPerfil ?? null,
+    notificacionesActivas: user.notificacionesActivas !== false,
     activo: user.activo !== false,
   };
 }

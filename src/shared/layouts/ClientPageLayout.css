@@ -1,0 +1,100 @@
+.client-view {
+  display: flex;
+  min-height: calc(100vh - var(--header-height));
+  flex-direction: column;
+  overflow-x: hidden;
+  background: var(--color-surface);
+}
+
+.client-view__main {
+  width: min(var(--layout-max-width), calc(100% - var(--space-12)));
+  flex: 1;
+  margin: 0 auto;
+  padding: var(--space-10) 0 var(--space-16);
+}
+
+.client-view__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.client-view__heading {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.client-view__heading h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-family: var(--font-family-heading);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: var(--line-height-tight);
+}
+
+.client-view__heading p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-lg);
+}
+
+.client-view__back {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.client-view__back:hover {
+  color: var(--color-primary);
+}
+
+.client-view__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.client-view__footer {
+  border-top: var(--border-default);
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-subtle);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .client-view__main {
+    width: min(100% - var(--space-8), 680px);
+    padding-top: var(--space-8);
+  }
+
+  .client-view__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .client-view__actions,
+  .client-view__actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .client-view__heading h1 {
+    font-size: var(--font-size-3xl);
+  }
+
+  .client-view__heading p {
+    font-size: var(--font-size-md);
+  }
+}

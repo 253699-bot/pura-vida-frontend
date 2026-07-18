@@ -1,0 +1,223 @@
+.profile-content {
+  display: grid;
+  max-width: 820px;
+  gap: var(--space-6);
+  margin: 0 auto;
+}
+
+.profile-summary,
+.profile-form,
+.profile-details {
+  border: var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.profile-avatar {
+  position: relative;
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  color: var(--color-text-light);
+  background: var(--color-primary);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-extra-bold);
+}
+
+.profile-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-summary__identity {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-summary__identity > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.profile-summary h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-2xl);
+}
+
+.profile-summary__identity > span {
+  color: var(--color-text-muted);
+}
+
+.profile-status {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-3);
+  color: var(--color-primary-dark);
+  background: var(--color-success-soft);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-extra-bold);
+}
+
+.profile-status--inactive {
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+}
+
+.profile-summary__edit,
+.profile-form__actions .button,
+.profile-logout {
+  gap: var(--space-2);
+}
+
+.profile-form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.profile-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.profile-section__heading h2,
+.profile-details h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
+}
+
+.profile-section__heading span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.profile-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.profile-form__grid .field:last-child {
+  grid-column: 1 / -1;
+}
+
+.profile-form .input[readonly] {
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+}
+
+.profile-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.profile-details {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.profile-details dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.profile-details dl > div {
+  display: grid;
+  gap: var(--space-2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  background: var(--color-surface-soft);
+}
+
+.profile-details dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-primary-dark);
+  font-weight: var(--font-weight-bold);
+}
+
+.profile-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+}
+
+.profile-logout {
+  width: 100%;
+}
+
+@media (max-width: 680px) {
+  .profile-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .profile-summary__edit {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .profile-form__grid,
+  .profile-details dl {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-form__grid .field:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-summary {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .profile-avatar {
+    width: 92px;
+    height: 92px;
+  }
+
+  .profile-summary,
+  .profile-form,
+  .profile-details {
+    padding: var(--space-5);
+  }
+
+  .profile-form__actions,
+  .profile-section__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-form__actions .button {
+    width: 100%;
+  }
+}

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminHomePage } from '../pages/admin/AdminHomePage.jsx';
+import { AdminOrdersPage } from '../pages/admin/AdminOrdersPage.jsx';
 import { DailyManagementPage } from '../pages/admin/DailyManagementPage.jsx';
 import { AdminMenuPage } from '../pages/admin/AdminMenuPage.jsx';
 import { BusinessStatusPage } from '../pages/admin/BusinessStatusPage.jsx';
@@ -10,12 +11,14 @@ import { LandingPage } from '../pages/landing/LandingPage.jsx';
 import { MenuPage } from '../pages/menu/MenuPage.jsx';
 import { NotificationsPage } from '../pages/notifications/NotificationsPage.jsx';
 import { MyOrdersPage } from '../pages/orders/MyOrdersPage.jsx';
+import { OrderDetailPage } from '../pages/orders/OrderDetailPage.jsx';
 import { ProfilePage } from '../pages/profile/ProfilePage.jsx';
 import { ProtectedRoute } from '../shared/auth/ProtectedRoute.jsx';
 import { USER_ROLES } from '../shared/constants/roles.js';
 
 export function AppRouter() {
   const encargadaOnly = [USER_ROLES.ENCARGADA];
+  const clienteOnly = [USER_ROLES.CLIENTE];
 
   return (
     <Routes>
@@ -34,7 +37,7 @@ export function AppRouter() {
       <Route
         path="/mis-pedidos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute roles={clienteOnly}>
             <MyOrdersPage />
           </ProtectedRoute>
         }
@@ -42,7 +45,7 @@ export function AppRouter() {
       <Route
         path="/carrito"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute roles={clienteOnly}>
             <CartPage />
           </ProtectedRoute>
         }
@@ -50,7 +53,7 @@ export function AppRouter() {
       <Route
         path="/notificaciones"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute roles={clienteOnly}>
             <NotificationsPage />
           </ProtectedRoute>
         }
@@ -68,6 +71,22 @@ export function AppRouter() {
         element={
           <ProtectedRoute roles={encargadaOnly}>
             <DailyManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mis-pedidos/:orderId"
+        element={
+          <ProtectedRoute roles={clienteOnly}>
+            <OrderDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/pedidos"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminOrdersPage />
           </ProtectedRoute>
         }
       />

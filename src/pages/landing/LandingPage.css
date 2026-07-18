@@ -44,7 +44,7 @@
 .landing-nav__link {
   position: relative;
   display: inline-flex;
-  min-height: 38px;
+  min-height: 44px;
   align-items: center;
   color: var(--color-text);
   font-weight: var(--font-weight-bold);
@@ -88,7 +88,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 0 1.15rem;
@@ -128,8 +128,8 @@
 .landing-icon-button {
   position: relative;
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: var(--border-width) solid rgba(var(--color-primary-rgb), 0.18);
   border-radius: var(--radius-full);
@@ -143,7 +143,7 @@
 }
 
 .landing-icon-button:hover,
-.landing-icon-button[aria-expanded="true"] {
+.landing-icon-button--active {
   border-color: rgba(var(--color-primary-rgb), 0.35);
   background: var(--color-surface);
 }
@@ -163,39 +163,6 @@
   font-weight: var(--font-weight-extra-bold);
 }
 
-.landing-quick-popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.75rem);
-  z-index: var(--z-dropdown);
-  display: grid;
-  width: 254px;
-  gap: 0.35rem;
-  border: var(--border-width) solid rgba(var(--color-primary-rgb), 0.12);
-  border-radius: var(--radius-lg);
-  padding: 0.85rem;
-  color: var(--color-text);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-lg);
-}
-
-.landing-quick-popover strong {
-  color: var(--color-primary-dark);
-}
-
-.landing-quick-popover span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
-}
-
-.landing-quick-popover a {
-  width: fit-content;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-extra-bold);
-}
-
 .landing-account {
   position: relative;
 }
@@ -212,6 +179,11 @@
   background: var(--color-surface);
   box-shadow: var(--shadow-control);
   cursor: pointer;
+}
+
+.landing-account__trigger--active {
+  color: var(--color-primary-dark);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .landing-account__avatar {
@@ -282,19 +254,14 @@
   gap: 0.1rem;
 }
 
-.landing-account__item small {
-  color: var(--color-text-subtle);
-  font-size: 0.72rem;
-  font-weight: var(--font-weight-bold);
-}
-
 .landing-account__item:hover:not(:disabled) {
   background: var(--color-surface-soft);
 }
 
-.landing-account__item:disabled {
-  color: var(--color-disabled);
-  cursor: not-allowed;
+.landing-account__item--active {
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+  font-weight: var(--font-weight-bold);
 }
 
 .landing-account__item--danger {
@@ -837,12 +804,6 @@
 
   .landing-quick-actions {
     width: 100%;
-  }
-
-  .landing-quick-popover {
-    left: 0;
-    right: auto;
-    width: min(100%, 320px);
   }
 
   .landing-account__trigger {

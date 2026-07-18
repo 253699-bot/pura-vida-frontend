@@ -4,8 +4,18 @@ export function Input({ label, error, className = '', id, ...props }) {
   return (
     <label className={`field ${className}`.trim()} htmlFor={inputId}>
       <span className="field__label">{label}</span>
-      <input id={inputId} className="input" {...props} />
-      {error ? <span className="field__error">{error}</span> : null}
+      <input
+        id={inputId}
+        className="input"
+        {...props}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={error ? `${inputId}-error` : props['aria-describedby']}
+      />
+      {error ? (
+        <span className="field__error" id={`${inputId}-error`}>
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }

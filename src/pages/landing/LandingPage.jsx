@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -13,25 +13,18 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { getTodayBusinessStatus } from '../../entities/business/businessApi.js';
+import { getCart } from '../../entities/cart/cartApi.js';
+import { getMyNotifications } from '../../entities/notifications/notificationApi.js';
+import {
+  CART_UPDATED_EVENT,
+  NOTIFICATIONS_UPDATED_EVENT,
+} from '../../shared/constants/events.js';
 import { useAuth } from '../../shared/hooks/useAuth.js';
 import brandLogo from '../../shared/assets/brand/pura-vida-logo.svg';
 import heroFood from '../../shared/assets/hero-food.jpg';
 import { AboutSection } from './components/AboutSection.jsx';
 import { LocationSection } from './components/LocationSection.jsx';
 import './LandingPage.css';
-
-const QUICK_NOTICES = {
-  cart: {
-    title: 'Carrito próximamente',
-    description: 'Esta sección se activará cuando el backend correspondiente esté disponible.',
-    to: '/carrito',
-  },
-  notifications: {
-    title: 'Notificaciones próximamente',
-    description: 'Esta sección se activará cuando el backend correspondiente esté disponible.',
-    to: '/notificaciones',
-  },
-};
 
 function getInitials(user) {
   const source = user?.nombre || user?.correo || 'PV';
@@ -63,47 +56,117 @@ function getStatusView({ status, hasError, isLoading }) {
     : { label: 'Cerrado hoy', tone: 'closed' };
 }
 
-function LandingHeader() {
+export function LandingHeader() {
   const { isAuthenticated, isEncargada, logout, user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeNotice, setActiveNotice] = useState(null);
-  const { hash } = useLocation();
+  const [cartCount, setCartCount] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(null);
+  const { hash, pathname } = useLocation();
   const navigate = useNavigate();
   const initials = useMemo(() => getInitials(user), [user]);
   const accountRef = useRef(null);
-  const noticeRef = useRef(null);
+  const cartRequestRef = useRef(0);
+  const notificationsRequestRef = useRef(0);
+  const isAccountSectionActive =
+    pathname === '/perfil' || pathname.startsWith('/mis-pedidos');
+
+  const loadCartCount = useCallback(async () => {
+    const requestId = ++cartRequestRef.current;
+
+    if (!isAuthenticated || isEncargada || pathname === '/carrito') {
+      setCartCount(null);
+      return;
+    }
+
+    try {
+      const cart = await getCart();
+
+      if (requestId !== cartRequestRef.current) {
+        return;
+      }
+
+      setCartCount(
+        cart.items.reduce((total, item) => total + item.cantidad, 0),
+      );
+    } catch {
+      if (requestId === cartRequestRef.current) {
+        setCartCount(null);
+      }
+    }
+  }, [isAuthenticated, isEncargada, pathname]);
+
+  const loadUnreadCount = useCallback(async () => {
+    const requestId = ++notificationsRequestRef.current;
+
+    if (!isAuthenticated || isEncargada || pathname === '/notificaciones') {
+      setUnreadCount(null);
+      return;
+    }
+
+    try {
+      const notifications = await getMyNotifications();
+
+      if (requestId !== notificationsRequestRef.current) {
+        return;
+      }
+
+      setUnreadCount(notifications.filter((item) => !item.leido).length);
+    } catch {
+      if (requestId === notificationsRequestRef.current) {
+        setUnreadCount(null);
+      }
+    }
+  }, [isAuthenticated, isEncargada, pathname]);
+
+  useEffect(() => {
+    loadCartCount();
+    window.addEventListener(CART_UPDATED_EVENT, loadCartCount);
+
+    return () => {
+      window.removeEventListener(CART_UPDATED_EVENT, loadCartCount);
+    };
+  }, [loadCartCount]);
+
+  useEffect(() => {
+    loadUnreadCount();
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, loadUnreadCount);
+
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, loadUnreadCount);
+    };
+  }, [loadUnreadCount]);
 
   useEffect(() => {
     function handleOutsideClick(event) {
       if (accountRef.current && !accountRef.current.contains(event.target)) {
         setIsMenuOpen(false);
       }
+    }
 
-      if (noticeRef.current && !noticeRef.current.contains(event.target)) {
-        setActiveNotice(null);
+    function handleEscape(event) {
+      if (
+        event.key === 'Escape' &&
+        accountRef.current?.querySelector('#landing-account-menu')
+      ) {
+        setIsMenuOpen(false);
+        accountRef.current?.querySelector('.landing-account__trigger')?.focus();
       }
     }
 
     document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, []);
 
   function handleLogout() {
     logout();
     setIsMenuOpen(false);
-    setActiveNotice(null);
     navigate('/', { replace: true });
   }
-
-  function handleNotice(type) {
-    setIsMenuOpen(false);
-    setActiveNotice((currentType) => (currentType === type ? null : type));
-  }
-
-  const notice = activeNotice ? QUICK_NOTICES[activeNotice] : null;
 
   return (
     <header className="landing-header">
@@ -114,23 +177,30 @@ function LandingHeader() {
 
         <nav className="landing-nav" aria-label="Navegación principal">
           <Link
-            className={`landing-nav__link ${hash ? '' : 'landing-nav__link--active'}`.trim()}
+            className={`landing-nav__link ${pathname === '/' && !hash ? 'landing-nav__link--active' : ''}`.trim()}
             to="/"
+            aria-current={pathname === '/' && !hash ? 'page' : undefined}
           >
             Inicio
           </Link>
-          <Link className="landing-nav__link" to="/menu">
+          <Link
+            className={`landing-nav__link ${pathname === '/menu' ? 'landing-nav__link--active' : ''}`.trim()}
+            to="/menu"
+            aria-current={pathname === '/menu' ? 'page' : undefined}
+          >
             Menú del día
           </Link>
           <Link
             className={`landing-nav__link ${hash === '#ubicacion' ? 'landing-nav__link--active' : ''}`.trim()}
             to="/#ubicacion"
+            aria-current={pathname === '/' && hash === '#ubicacion' ? 'location' : undefined}
           >
             Ubicación
           </Link>
           <Link
             className={`landing-nav__link ${hash === '#nosotros' ? 'landing-nav__link--active' : ''}`.trim()}
             to="/#nosotros"
+            aria-current={pathname === '/' && hash === '#nosotros' ? 'location' : undefined}
           >
             Nosotros
           </Link>
@@ -139,36 +209,44 @@ function LandingHeader() {
         <div className="landing-user">
           {isAuthenticated ? (
             <>
-              <div className="landing-quick-actions" ref={noticeRef}>
-                <button
-                  type="button"
-                  className="landing-icon-button"
-                  aria-label="Ver estado de carrito"
-                  aria-expanded={activeNotice === 'cart'}
-                  onClick={() => handleNotice('cart')}
-                >
-                  <ShoppingCart size={20} strokeWidth={2.2} />
-                  <span className="landing-icon-button__badge">0</span>
-                </button>
-                <button
-                  type="button"
-                  className="landing-icon-button"
-                  aria-label="Ver estado de notificaciones"
-                  aria-expanded={activeNotice === 'notifications'}
-                  onClick={() => handleNotice('notifications')}
-                >
-                  <Bell size={20} strokeWidth={2.2} />
-                </button>
-                {notice ? (
-                  <div className="landing-quick-popover" role="status">
-                    <strong>{notice.title}</strong>
-                    <span>{notice.description}</span>
-                    <Link to={notice.to} onClick={() => setActiveNotice(null)}>
-                      Ver sección
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
+              {!isEncargada ? (
+                <div className="landing-quick-actions">
+                  <Link
+                    to="/carrito"
+                    className={`landing-icon-button ${pathname === '/carrito' ? 'landing-icon-button--active' : ''}`.trim()}
+                    aria-current={pathname === '/carrito' ? 'page' : undefined}
+                    aria-label={
+                      cartCount > 0
+                        ? `Carrito, ${cartCount} productos`
+                        : 'Abrir carrito'
+                    }
+                  >
+                    <ShoppingCart size={20} strokeWidth={2.2} aria-hidden="true" />
+                    {cartCount > 0 ? (
+                      <span className="landing-icon-button__badge" aria-hidden="true">
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    ) : null}
+                  </Link>
+                  <Link
+                    to="/notificaciones"
+                    className={`landing-icon-button ${pathname === '/notificaciones' ? 'landing-icon-button--active' : ''}`.trim()}
+                    aria-current={pathname === '/notificaciones' ? 'page' : undefined}
+                    aria-label={
+                      unreadCount > 0
+                        ? `Notificaciones, ${unreadCount} sin leer`
+                        : 'Abrir notificaciones'
+                    }
+                  >
+                    <Bell size={20} strokeWidth={2.2} aria-hidden="true" />
+                    {unreadCount > 0 ? (
+                      <span className="landing-icon-button__badge" aria-hidden="true">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    ) : null}
+                  </Link>
+                </div>
+              ) : null}
               {isEncargada ? (
                 <Link className="landing-panel-link" to="/admin">
                   Panel
@@ -177,9 +255,11 @@ function LandingHeader() {
               <div className="landing-account" ref={accountRef}>
                 <button
                   type="button"
-                  className="landing-account__trigger"
+                  className={`landing-account__trigger ${isAccountSectionActive ? 'landing-account__trigger--active' : ''}`.trim()}
                   aria-label="Abrir menú de usuario"
                   aria-expanded={isMenuOpen}
+                  aria-controls="landing-account-menu"
+                  aria-current={isAccountSectionActive ? 'page' : undefined}
                   onClick={() => setIsMenuOpen((current) => !current)}
                 >
                   <span className="landing-account__avatar">{initials}</span>
@@ -187,33 +267,33 @@ function LandingHeader() {
                   <ChevronDown size={18} strokeWidth={2.2} aria-hidden="true" />
                 </button>
                 {isMenuOpen ? (
-                  <div className="landing-account__menu">
+                  <div className="landing-account__menu" id="landing-account-menu">
                     <div className="landing-account__identity">
                       <strong>{user?.nombre || 'Usuario PuraVida'}</strong>
                       <span>{user?.correo}</span>
                     </div>
                     <Link
                       to="/perfil"
-                      className="landing-account__item"
+                      className={`landing-account__item ${pathname === '/perfil' ? 'landing-account__item--active' : ''}`.trim()}
+                      aria-current={pathname === '/perfil' ? 'page' : undefined}
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <UserCircle size={18} strokeWidth={2} aria-hidden="true" />
                       <span>
                         Mi perfil
-                        <small>Próximamente</small>
                       </span>
                     </Link>
-                    <Link
-                      to="/mis-pedidos"
-                      className="landing-account__item"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Package size={18} strokeWidth={2} aria-hidden="true" />
-                      <span>
-                        Mis pedidos
-                        <small>Próximamente</small>
-                      </span>
-                    </Link>
+                    {!isEncargada ? (
+                      <Link
+                        to="/mis-pedidos"
+                        className={`landing-account__item ${pathname.startsWith('/mis-pedidos') ? 'landing-account__item--active' : ''}`.trim()}
+                        aria-current={pathname.startsWith('/mis-pedidos') ? 'page' : undefined}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Package size={18} strokeWidth={2} aria-hidden="true" />
+                        <span>Mis pedidos</span>
+                      </Link>
+                    ) : null}
                     {isEncargada ? (
                       <Link
                         to="/admin"

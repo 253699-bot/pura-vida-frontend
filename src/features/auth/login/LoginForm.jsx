@@ -37,13 +37,19 @@ export function LoginForm() {
         correo: form.correo.trim(),
         password: form.password,
       });
-      const fromPath = location.state?.from?.pathname;
+      const fromLocation = location.state?.from;
+      const fromPathname = fromLocation?.pathname;
+      const fromPath = fromPathname
+        ? `${fromPathname}${fromLocation.search || ''}${fromLocation.hash || ''}`
+        : '';
       const target =
         authData.user?.rol === USER_ROLES.ENCARGADA
-          ? fromPath?.startsWith('/admin')
+          ? fromPathname?.startsWith('/admin')
             ? fromPath
             : '/admin'
-          : '/';
+          : fromPath && !fromPathname.startsWith('/admin')
+            ? fromPath
+            : '/';
 
       navigate(target, { replace: true });
     } catch (apiError) {
