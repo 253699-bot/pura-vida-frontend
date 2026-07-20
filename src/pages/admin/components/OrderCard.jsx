@@ -56,6 +56,12 @@ export function OrderCard({
   isUpdating = false,
   onAccept,
   onReject,
+<<<<<<< Updated upstream
+=======
+  onComplete,
+  onCancel,
+  onView,
+>>>>>>> Stashed changes
 }) {
   const status = getStatusPresentation(order.status);
   const items = Array.isArray(order.items) ? order.items : [];
@@ -98,6 +104,26 @@ export function OrderCard({
         </p>
       ) : null}
 
+      {order.estimatedWait ? (
+        <p className="admin-order-card__notes">
+          <Clock3 size={16} strokeWidth={2} aria-hidden="true" />
+          <span>
+            <strong>Tiempo estimado</strong>
+            {order.estimatedWait}
+          </span>
+        </p>
+      ) : null}
+
+      {order.cancelledAt ? (
+        <p className="admin-order-card__notes">
+          <MessageSquareText size={16} strokeWidth={2} aria-hidden="true" />
+          <span>
+            <strong>Cancelado</strong>
+            {order.cancelledAt}
+          </span>
+        </p>
+      ) : null}
+
       {order.total !== undefined ? (
         <div className="admin-order-card__total">
           <span>Total</span>
@@ -124,6 +150,35 @@ export function OrderCard({
           </Button>
         </div>
       ) : null}
+<<<<<<< Updated upstream
+=======
+
+      {status.key === 'accepted' ? (
+        <div className="admin-order-card__actions">
+          <Button
+            onClick={() => onComplete?.(order)}
+            disabled={!actionsAvailable || isUpdating}
+            title={!actionsAvailable ? 'Acción no disponible' : undefined}
+          >
+            {isUpdating ? 'Finalizando...' : 'Finalizar pedido'}
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => onCancel?.(order)}
+            disabled={!actionsAvailable || isUpdating}
+            title={!actionsAvailable ? 'Acción no disponible' : undefined}
+          >
+            Cancelar
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="admin-order-card__actions admin-order-card__actions--single">
+        <Button variant="secondary" size="sm" onClick={() => onView?.(order)} disabled={isUpdating}>
+          Ver detalle
+        </Button>
+      </div>
+>>>>>>> Stashed changes
     </Card>
   );
 }

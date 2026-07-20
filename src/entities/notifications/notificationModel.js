@@ -3,6 +3,7 @@ export const NOTIFICATION_TYPE_DETAILS = {
   pedido_creado: { label: 'Pedido creado', tone: 'pending' },
   pedido_aceptado: { label: 'Pedido aceptado', tone: 'accepted' },
   pedido_rechazado: { label: 'Pedido rechazado', tone: 'rejected' },
+  pedido_cancelado: { label: 'Pedido cancelado', tone: 'cancelled' },
 };
 
 export function normalizeNotification(notification) {

@@ -82,6 +82,9 @@ export function MenuPage() {
   const canOrder = Boolean(
     canUseCart && businessStatus?.configured && businessStatus.abierto === true,
   );
+  const isBusinessClosed = Boolean(
+    !isLoading && !hasStatusError && businessStatus?.configured && businessStatus.abierto === false,
+  );
 
   const visibleItems = useMemo(() => {
     if (!menu?.items) {
@@ -228,7 +231,7 @@ export function MenuPage() {
         </aside>
       </header>
 
-      {menu?.configured && menu.items.length ? (
+      {menu?.configured && menu.items.length && !isBusinessClosed ? (
         <div className="public-menu__filters" aria-label="Filtrar menú por tipo">
           {MENU_FILTERS.map((filter) => {
             const Icon = filter.icon;
@@ -253,22 +256,31 @@ export function MenuPage() {
       <section className="public-menu__content" id="today-menu-grid" aria-live="polite">
         {isLoading ? <Loading label="Cargando menú..." /> : null}
         <ErrorMessage message={error} />
-        {!isLoading && !error && menu && !menu.configured ? (
+        {!isLoading && !error && isBusinessClosed ? (
+          <section className="public-menu-closed" aria-live="polite">
+            <Store size={44} strokeWidth={1.8} aria-hidden="true" />
+            <div>
+              <h2>La fonda está cerrada</h2>
+              <p>{businessStatus?.motivoCierre || 'Por ahora no se pueden consultar platillos ni realizar pedidos.'}</p>
+            </div>
+          </section>
+        ) : null}
+        {!isLoading && !error && !isBusinessClosed && menu && !menu.configured ? (
           <EmptyState
             title="Menú no configurado"
-            message="Todavía no hay menú del día disponible. Vuelve a consultar más tarde."
+            message="Todavía no hay menú del día disponible. Vuelve más tarde."
           />
         ) : null}
-        {!isLoading && !error && menu?.configured && !menu.items.length ? (
+        {!isLoading && !error && !isBusinessClosed && menu?.configured && !menu.items.length ? (
           <EmptyState title="Sin platillos" message="El menú de hoy todavía no tiene platillos." />
         ) : null}
-        {!isLoading && !error && menu?.configured && menu.items.length && !visibleItems.length ? (
+        {!isLoading && !error && !isBusinessClosed && menu?.configured && menu.items.length && !visibleItems.length ? (
           <EmptyState
             title="Sin opciones en esta categoría"
             message="Prueba con otro filtro para consultar el menú de hoy."
           />
         ) : null}
-        {visibleItems.length ? (
+        {!isBusinessClosed && visibleItems.length ? (
           <div className="public-menu__grid">
             {visibleItems.map((item) => (
               <MenuDishCard

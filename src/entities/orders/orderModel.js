@@ -1,3 +1,5 @@
+import { resolveApiAssetUrl } from '../../shared/api/assets.js';
+
 export const ORDER_STATUS_DETAILS = {
   pendiente: { label: 'Pendiente', tone: 'pending' },
   aceptado: { label: 'Aceptado', tone: 'accepted' },
@@ -23,6 +25,7 @@ export function normalizeOrderItem(item) {
     cantidad: Number(item.cantidad || 0),
     precioUnitario: Number(item.precioUnitario || 0),
     subtotal: Number(item.subtotal || 0),
+    imagenUrl: resolveApiAssetUrl(item.imagenUrl),
   };
 }
 
@@ -43,6 +46,9 @@ export function normalizeOrder(order) {
     motivoRechazo: order.motivoRechazo ?? '',
     respondidoPor: order.respondidoPor ?? null,
     respondidoEn: order.respondidoEn ?? null,
+    tiempoEsperaEstimado: order.tiempoEsperaEstimado ?? null,
+    canceladoPor: order.canceladoPor ?? null,
+    canceladoEn: order.canceladoEn ?? null,
     items: Array.isArray(order.items)
       ? order.items.map(normalizeOrderItem).filter(Boolean)
       : [],
@@ -60,6 +66,51 @@ export function normalizeOrderSummary(order) {
   return summary;
 }
 
+<<<<<<< Updated upstream
+=======
+function combineOrderDateTime(fecha, hora) {
+  if (fecha && hora) {
+    return `${fecha}T${hora}`;
+  }
+
+  return fecha || hora || null;
+}
+
+export function normalizeAdminOrder(order) {
+  if (!order) {
+    return null;
+  }
+
+  const backendOrder = {
+    ...order,
+    id: order.id ?? order.idPedido ?? null,
+    estado: order.estado ?? order.status,
+  };
+  const normalized = normalizeOrder(backendOrder);
+
+  return {
+    ...order,
+    id: normalized.id,
+    status: normalized.estado,
+    customerName: normalized.clienteNombre || order.customerName || '',
+    createdAt: order.createdAt || combineOrderDateTime(normalized.fecha, normalized.hora),
+    total: normalized.total,
+    source: order.origen ?? order.source ?? null,
+    notes: normalized.notas,
+    rejectionReason: normalized.motivoRechazo,
+    estimatedWait: normalized.tiempoEsperaEstimado,
+    cancelledBy: normalized.canceladoPor,
+    cancelledAt: normalized.canceladoEn,
+    items: normalized.items.map((item) => ({
+      ...item,
+      name: item.nombre,
+      quantity: item.cantidad,
+    })),
+    raw: order,
+  };
+}
+
+>>>>>>> Stashed changes
 export function getOrderStatusDetails(status) {
   return ORDER_STATUS_DETAILS[status] || { label: 'Estado no disponible', tone: 'neutral' };
 }

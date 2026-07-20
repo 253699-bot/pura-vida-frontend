@@ -17,7 +17,7 @@ export function ProtectedRoute({ children, roles = [] }) {
       <main className="page page--narrow">
         <ErrorMessage
           title="Acceso restringido"
-          message="Tu cuenta no tiene permisos para abrir esta seccion."
+          message="Tu cuenta no tiene permisos para abrir esta sección."
         />
       </main>
     );

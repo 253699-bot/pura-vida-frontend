@@ -409,6 +409,41 @@
   line-height: var(--line-height-normal);
 }
 
+.admin-order-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-order-detail dl,
+.admin-order-detail__items {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-order-detail dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.admin-order-detail dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-order-detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-order-detail__items div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-top: var(--border-default);
+  padding-top: var(--space-3);
+}
+
 @media (max-width: 1080px) {
   .admin-orders-page {
     grid-template-columns: 220px minmax(0, 1fr);
@@ -522,5 +557,52 @@
 
   .admin-order-card__actions {
     grid-template-columns: 1fr;
+  }
+}
+
+.admin-orders-page__topbar {
+  flex: 1 1 520px;
+}
+
+.admin-orders-page__topbar .admin-header-actions {
+  flex-wrap: nowrap;
+}
+
+.admin-order-cancel-confirmation {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-order-cancel-confirmation p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: var(--line-height-normal);
+}
+
+@media (max-width: 860px) {
+  .admin-orders-page__topbar,
+  .admin-orders-page__topbar .admin-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+.admin-orders-toolbar__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.admin-orders-history-link {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .admin-orders-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Bell,
+  Ban,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
   LogOut,
-  Mail,
   Pencil,
-  Phone,
   Save,
-  ShieldCheck,
-  UserRound,
   X,
+  XCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getMyOrders } from '../../entities/orders/orderApi.js';
+import { LogoutConfirmationDialog } from '../../features/auth/logout/LogoutConfirmationDialog.jsx';
 import { getMyProfile, updateMyProfile } from '../../entities/usuario/userApi.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { useAuth } from '../../shared/hooks/useAuth.js';
@@ -19,6 +21,14 @@ import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Input } from '../../shared/ui/Input.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
 import './ProfilePage.css';
+
+const EMPTY_ORDER_STATS = {
+  total: 0,
+  accepted: 0,
+  pending: 0,
+  rejected: 0,
+  cancelled: 0,
+};
 
 function getInitials(name) {
   return String(name || 'PV')
@@ -30,27 +40,44 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-function roleLabel(role) {
-  if (role === 'encargada') {
-    return 'Encargada';
-  }
+function calculateOrderStats(orders) {
+  return orders.reduce((stats, order) => {
+    const estado = order.estado;
+    return {
+      ...stats,
+      total: stats.total + 1,
+      accepted: stats.accepted + (estado === 'aceptado' ? 1 : 0),
+      pending: stats.pending + (estado === 'pendiente' ? 1 : 0),
+      rejected: stats.rejected + (estado === 'rechazado' ? 1 : 0),
+      cancelled: stats.cancelled + (estado === 'cancelado' ? 1 : 0),
+    };
+  }, EMPTY_ORDER_STATS);
+}
 
-  if (role === 'cliente') {
-    return 'Cliente';
-  }
-
-  return 'Rol no disponible';
+function OrderStatCard({ icon: Icon, label, value }) {
+  return (
+    <div>
+      <dt>
+        <Icon size={20} aria-hidden="true" /> {label}
+      </dt>
+      <dd>{value.toLocaleString('es-MX')}</dd>
+    </div>
+  );
 }
 
 export function ProfilePage() {
   const { logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ nombre: '', telefono: '' });
+  const [form, setForm] = useState({ nombre: '', correo: '', telefono: '' });
+  const [orderStats, setOrderStats] = useState(EMPTY_ORDER_STATS);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingLogout, setIsConfirmingLogout] = useState(false);
   const [error, setError] = useState('');
+  const [ordersError, setOrdersError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -61,24 +88,32 @@ export function ProfilePage() {
     let isMounted = true;
 
     async function loadProfile() {
-      try {
-        const data = await getMyProfile();
+      const [profileResult, ordersResult] = await Promise.allSettled([
+        getMyProfile(),
+        getMyOrders(),
+      ]);
 
-        if (isMounted) {
-          setProfile(data);
-          setForm({ nombre: data.nombre, telefono: data.telefono || '' });
-          updateUser(data);
-          setError('');
-        }
-      } catch (requestError) {
-        if (isMounted) {
-          setError(getApiMessage(requestError, 'No se pudo consultar tu perfil.'));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      if (!isMounted) return;
+
+      if (profileResult.status === 'fulfilled') {
+        const data = profileResult.value;
+        setProfile(data);
+        setForm({ nombre: data.nombre, correo: data.correo || '', telefono: data.telefono || '' });
+        updateUser(data);
+        setError('');
+      } else {
+        setError(getApiMessage(profileResult.reason, 'No se pudo consultar tu perfil.'));
       }
+
+      if (ordersResult.status === 'fulfilled') {
+        setOrderStats(calculateOrderStats(ordersResult.value));
+        setOrdersError('');
+      } else {
+        setOrdersError(getApiMessage(ordersResult.reason, 'No se pudieron consultar tus pedidos.'));
+      }
+
+      setIsLoading(false);
+      setIsLoadingOrders(false);
     }
 
     loadProfile();
@@ -97,7 +132,7 @@ export function ProfilePage() {
   }
 
   function cancelEditing() {
-    setForm({ nombre: profile.nombre, telefono: profile.telefono || '' });
+    setForm({ nombre: profile.nombre, correo: profile.correo || '', telefono: profile.telefono || '' });
     setFieldErrors({});
     setSaveError('');
     setSuccessMessage('');
@@ -112,6 +147,7 @@ export function ProfilePage() {
     }
 
     const nombre = form.nombre.trim();
+    const correo = form.correo.trim();
     const telefono = form.telefono.trim();
     const nextErrors = {};
 
@@ -125,6 +161,12 @@ export function ProfilePage() {
       nextErrors.telefono = 'El teléfono no debe exceder 20 caracteres.';
     }
 
+    if (!correo) {
+      nextErrors.correo = 'El correo es obligatorio.';
+    } else if (!/^\S+@\S+\.\S+$/.test(correo)) {
+      nextErrors.correo = 'Ingresa un correo válido.';
+    }
+
     if (Object.keys(nextErrors).length) {
       setFieldErrors(nextErrors);
       return;
@@ -134,6 +176,10 @@ export function ProfilePage() {
 
     if (nombre !== profile.nombre) {
       payload.nombre = nombre;
+    }
+
+    if (correo !== profile.correo) {
+      payload.correo = correo;
     }
 
     if (telefono !== (profile.telefono || '')) {
@@ -153,7 +199,7 @@ export function ProfilePage() {
     try {
       const updatedProfile = await updateMyProfile(payload);
       setProfile(updatedProfile);
-      setForm({ nombre: updatedProfile.nombre, telefono: updatedProfile.telefono || '' });
+      setForm({ nombre: updatedProfile.nombre, correo: updatedProfile.correo || '', telefono: updatedProfile.telefono || '' });
       updateUser(updatedProfile);
       setSuccessMessage('Tu información se actualizó correctamente.');
       setIsEditing(false);
@@ -166,6 +212,7 @@ export function ProfilePage() {
 
   function handleLogout() {
     logout();
+    setIsConfirmingLogout(false);
     navigate('/', { replace: true });
   }
 
@@ -225,7 +272,7 @@ export function ProfilePage() {
           <form className="profile-form" onSubmit={handleSubmit}>
             <div className="profile-section__heading">
               <h2>Datos personales</h2>
-              {isEditing ? <span>Solo puedes actualizar nombre y teléfono.</span> : null}
+              {isEditing ? <span>Puedes actualizar nombre, correo y teléfono.</span> : null}
             </div>
             <div className="profile-form__grid">
               <Input
@@ -251,8 +298,10 @@ export function ProfilePage() {
                 label="Correo electrónico"
                 name="correo"
                 type="email"
-                value={profile.correo}
-                readOnly
+                value={isEditing ? form.correo : profile.correo}
+                error={fieldErrors.correo}
+                readOnly={!isEditing}
+                onChange={handleChange}
               />
             </div>
 
@@ -283,45 +332,41 @@ export function ProfilePage() {
           </form>
 
           <section className="profile-details">
-            <h2>Cuenta</h2>
-            <dl>
-              <div>
-                <dt>
-                  <Mail size={20} aria-hidden="true" /> Correo
-                </dt>
-                <dd>{profile.correo}</dd>
-              </div>
-              <div>
-                <dt>
-                  <Phone size={20} aria-hidden="true" /> Teléfono
-                </dt>
-                <dd>{profile.telefono || 'No registrado'}</dd>
-              </div>
-              <div>
-                <dt>
-                  <ShieldCheck size={20} aria-hidden="true" /> Rol
-                </dt>
-                <dd>{roleLabel(profile.rol)}</dd>
-              </div>
-              <div>
-                <dt>
-                  <Bell size={20} aria-hidden="true" /> Notificaciones de pedidos
-                </dt>
-                <dd>{profile.notificacionesActivas ? 'Activadas' : 'Desactivadas'}</dd>
-              </div>
-            </dl>
+            <div className="profile-section__heading">
+              <h2>Datos de pedidos</h2>
+              <span>El total incluye todos tus pedidos realizados, también finalizados.</span>
+            </div>
+            {isLoadingOrders ? <Loading label="Cargando pedidos..." /> : null}
+            <ErrorMessage message={ordersError} />
+            {!isLoadingOrders && !ordersError && orderStats.total === 0 ? (
+              <p className="profile-orders-empty">Aún no tienes pedidos registrados.</p>
+            ) : null}
+            {!isLoadingOrders && !ordersError && orderStats.total > 0 ? (
+              <dl>
+                <OrderStatCard icon={ClipboardList} label="Total de pedidos" value={orderStats.total} />
+                <OrderStatCard icon={CheckCircle2} label="Pedidos aceptados" value={orderStats.accepted} />
+                <OrderStatCard icon={Clock3} label="Pedidos pendientes" value={orderStats.pending} />
+                <OrderStatCard icon={XCircle} label="Pedidos rechazados" value={orderStats.rejected} />
+                <OrderStatCard icon={Ban} label="Pedidos cancelados" value={orderStats.cancelled} />
+              </dl>
+            ) : null}
           </section>
 
           <button
             type="button"
             className="button button--danger profile-logout"
-            onClick={handleLogout}
+            onClick={() => setIsConfirmingLogout(true)}
           >
             <LogOut size={19} aria-hidden="true" />
             Cerrar sesión
           </button>
         </div>
       ) : null}
+      <LogoutConfirmationDialog
+        open={isConfirmingLogout}
+        onCancel={() => setIsConfirmingLogout(false)}
+        onConfirm={handleLogout}
+      />
     </ClientPageLayout>
   );
 }

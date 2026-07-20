@@ -43,6 +43,8 @@ export function MenuDishCard({
   const type = MENU_TYPE_DETAILS[item.tipoPlatillo] || DEFAULT_TYPE;
   const Icon = type.icon;
   const [quantity, setQuantity] = useState(1);
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(item.imagenUrl) && !imageFailed;
   const isAdding = operation?.status === 'loading';
 
   function getActionLabel() {
@@ -63,8 +65,12 @@ export function MenuDishCard({
 
   return (
     <article className={`menu-dish-card ${item.disponible ? '' : 'menu-dish-card--sold-out'}`.trim()}>
-      <div className={`menu-dish-card__media menu-dish-card__media--${type.tone}`}>
-        <Icon size={48} strokeWidth={1.7} aria-hidden="true" />
+      <div className={`menu-dish-card__media ${hasImage ? 'menu-dish-card__media--image' : `menu-dish-card__media--${type.tone}`}`}>
+        {hasImage ? (
+          <img src={item.imagenUrl} alt={`Foto de ${item.nombre}`} onError={() => setImageFailed(true)} />
+        ) : (
+          <Icon size={48} strokeWidth={1.7} aria-hidden="true" />
+        )}
         <span>{type.label}</span>
       </div>
 

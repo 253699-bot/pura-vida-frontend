@@ -20,7 +20,7 @@ export function RegisterPage() {
           </div>
           <RegisterForm />
           <p className="card__meta">
-            ¿Ya tienes cuenta? <Link to="/login">Inicia sesion</Link>
+            ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
           </p>
         </div>
       </Card>

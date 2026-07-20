@@ -21,6 +21,12 @@ const ORDER_FILTERS = [
   { value: 'cancelado', label: 'Cancelados' },
 ];
 
+
+function shouldShowEstimatedWait(order) {
+  return ['aceptado', 'finalizado'].includes(order.estado)
+    && typeof order.tiempoEsperaEstimado === 'string'
+    && order.tiempoEsperaEstimado.trim().length > 0;
+}
 function getOrderTimestamp(order) {
   const date = order.fecha || '1970-01-01';
   const time = order.hora || '00:00:00';
@@ -143,6 +149,11 @@ export function MyOrdersPage() {
                   Ver detalle
                 </Link>
               </div>
+              {shouldShowEstimatedWait(order) ? (
+                <p className="order-card__estimate">
+                  Tiempo estimado para recoger: <strong>{order.tiempoEsperaEstimado.trim()}</strong>
+                </p>
+              ) : null}
               {order.estado === 'rechazado' && order.motivoRechazo ? (
                 <p className="order-card__reason">
                   <strong>Motivo:</strong> {order.motivoRechazo}

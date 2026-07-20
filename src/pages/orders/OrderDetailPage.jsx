@@ -15,6 +15,21 @@ import {
 import { OrderStatusBadge } from './components/OrderStatusBadge.jsx';
 import './OrderDetailPage.css';
 
+
+function OrderItemMedia({ item }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(item.imagenUrl) && !imageFailed;
+
+  return (
+    <span className={`order-detail__item-media ${hasImage ? 'order-detail__item-media--image' : ''}`.trim()} aria-hidden="true">
+      {hasImage ? (
+        <img src={item.imagenUrl} alt="" onError={() => setImageFailed(true)} />
+      ) : (
+        <Utensils size={24} strokeWidth={1.8} />
+      )}
+    </span>
+  );
+}
 const STATUS_MESSAGES = {
   pendiente: {
     icon: Clock3,
@@ -42,6 +57,12 @@ const STATUS_MESSAGES = {
   },
 };
 
+
+function shouldShowEstimatedWait(order) {
+  return ['aceptado', 'finalizado'].includes(order.estado)
+    && typeof order.tiempoEsperaEstimado === 'string'
+    && order.tiempoEsperaEstimado.trim().length > 0;
+}
 function OrderResponseMessage({ order }) {
   if (order.estado === 'rechazado') {
     return (
@@ -69,6 +90,11 @@ function OrderResponseMessage({ order }) {
       <div>
         <strong>{response.title}</strong>
         <span>{response.message}</span>
+        {shouldShowEstimatedWait(order) ? (
+          <span className="order-response__estimate">
+            Tiempo estimado para recoger: <strong>{order.tiempoEsperaEstimado.trim()}</strong>
+          </span>
+        ) : null}
         {order.respondidoEn ? <small>Respuesta: {formatDateTime(order.respondidoEn)}</small> : null}
       </div>
     </section>
@@ -146,13 +172,11 @@ export function OrderDetailPage() {
               <div className="order-detail__item-list">
                 {order.items.map((item) => (
                   <article className="order-detail__item" key={item.id ?? item.platilloId}>
-                    <span aria-hidden="true">
-                      <Utensils size={24} strokeWidth={1.8} />
-                    </span>
+                    <OrderItemMedia item={item} />
                     <div>
                       <strong>{item.nombre}</strong>
                       <small>
-                        {item.cantidad} × {formatCurrency(item.precioUnitario)}
+                        {item.cantidad} x {formatCurrency(item.precioUnitario)}
                       </small>
                     </div>
                     <strong>{formatCurrency(item.subtotal)}</strong>
