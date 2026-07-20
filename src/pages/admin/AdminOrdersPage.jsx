@@ -9,7 +9,11 @@ import {
   getAdminOrders,
   rejectAdminOrder
 } from '../../entities/orders/orderApi.js';
-import { getApiMessage } from '../../shared/api/apiResponse.js';
+import {
+  ORDER_REJECTION_CATEGORIES,
+  getOrderRejectionReason
+} from '../../entities/orders/orderModel.js';
+import { getApiErrors, getApiMessage } from '../../shared/api/apiResponse.js';
 import { Button } from '../../shared/ui/Button.jsx';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
@@ -35,12 +39,6 @@ const HISTORY_ORDER_FILTERS = [
   { value: 'finalizado', label: 'Finalizados' },
   { value: 'rechazado', label: 'Rechazados' },
   { value: 'cancelado', label: 'Cancelados' }
-];
-
-const REJECTION_CATEGORIES = [
-  { value: 'sin_stock', label: 'Sin stock' },
-  { value: 'fuera_horario', label: 'Fuera de horario' },
-  { value: 'otro', label: 'Otro' }
 ];
 
 const STATUS_ALIASES = {
@@ -93,6 +91,8 @@ function OrderDetailDialog({ order, loading, error, onClose }) {
   if (!isOpen) {
     return null;
   }
+
+  const rejectionReason = getOrderRejectionReason(order);
 
   return (
     <div
@@ -148,10 +148,10 @@ function OrderDetailDialog({ order, loading, error, onClose }) {
                   <dd>{order.notas}</dd>
                 </div>
               ) : null}
-              {order.motivoRechazo ? (
+              {rejectionReason ? (
                 <div>
                   <dt>Motivo de rechazo</dt>
-                  <dd>{order.motivoRechazo}</dd>
+                  <dd>{rejectionReason}</dd>
                 </div>
               ) : null}
             </dl>
@@ -187,7 +187,8 @@ export function AdminOrdersPage({ history = false }) {
   const [acceptMinutes, setAcceptMinutes] = useState('25');
   const [rejectOrder, setRejectOrder] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [rejectCategory, setRejectCategory] = useState(REJECTION_CATEGORIES[0].value);
+  const [rejectCategory, setRejectCategory] = useState(ORDER_REJECTION_CATEGORIES[0].value);
+  const [rejectError, setRejectError] = useState('');
   const [confirmOrder, setConfirmOrder] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -337,19 +338,56 @@ export function AdminOrdersPage({ history = false }) {
   const openRejectDialog = (order) => {
     setRejectOrder(order);
     setRejectReason('');
-    setRejectCategory(REJECTION_CATEGORIES[0].value);
+    setRejectCategory(ORDER_REJECTION_CATEGORIES[0].value);
+    setRejectError('');
     setActionError('');
   };
 
-  const handleReject = () => {
-    if (!rejectReason.trim()) {
-      setActionError('Escribe el motivo del rechazo.');
+  const closeRejectDialog = () => {
+    setRejectOrder(null);
+    setRejectReason('');
+    setRejectCategory(ORDER_REJECTION_CATEGORIES[0].value);
+    setRejectError('');
+  };
+
+  const handleReject = async () => {
+    const trimmedReason = rejectReason.trim();
+    setRejectError('');
+    setActionError('');
+    setActionMessage('');
+
+    if (!rejectCategory) {
+      setRejectError('Selecciona una categoría de rechazo.');
       return;
     }
-    performOrderAction(
-      () => rejectAdminOrder(rejectOrder.id, { motivoRechazo: rejectReason.trim() }),
-      `Pedido ${rejectOrder.folio || `#${rejectOrder.id}`} rechazado.`
-    );
+
+    if (rejectCategory === 'otro' && !trimmedReason) {
+      setRejectError('Escribe el motivo del rechazo.');
+      return;
+    }
+
+    const payload = { categoriaRechazo: rejectCategory };
+    if (rejectCategory === 'otro') {
+      payload.motivoRechazo = trimmedReason;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const updatedOrder = await rejectAdminOrder(rejectOrder.id, payload);
+      setOrders((current) => updateOrderInList(current, updatedOrder));
+      setDetailOrder((current) => (current?.id === updatedOrder.id ? updatedOrder : current));
+      setActionMessage(`Pedido ${rejectOrder.folio || `#${rejectOrder.id}`} rechazado.`);
+      closeRejectDialog();
+    } catch (err) {
+      const apiErrors = getApiErrors(err);
+      setRejectError(
+        apiErrors.motivoRechazo
+          || apiErrors.categoriaRechazo
+          || getApiMessage(err, 'No se pudo rechazar el pedido.')
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openConfirmDialog = (order, action) => {
@@ -527,7 +565,7 @@ export function AdminOrdersPage({ history = false }) {
                 <p>Rechazar pedido</p>
                 <h2 id="reject-order-title">{rejectOrder.folio || `#${rejectOrder.id}`}</h2>
               </div>
-              <button type="button" onClick={() => setRejectOrder(null)} aria-label="Cerrar diálogo" disabled={isSubmitting}>
+              <button type="button" onClick={closeRejectDialog} aria-label="Cerrar diálogo" disabled={isSubmitting}>
                 <X aria-hidden="true" size={20} />
               </button>
             </header>
@@ -543,29 +581,44 @@ export function AdminOrdersPage({ history = false }) {
                 <select
                   className="dish-form__select"
                   value={rejectCategory}
-                  onChange={(event) => setRejectCategory(event.target.value)}
+                  onChange={(event) => {
+                    const nextCategory = event.target.value;
+                    setRejectCategory(nextCategory);
+                    setRejectError('');
+                    setActionError('');
+                    if (nextCategory !== 'otro') {
+                      setRejectReason('');
+                    }
+                  }}
                   disabled={isSubmitting}
                 >
-                  {REJECTION_CATEGORIES.map((category) => (
+                  {ORDER_REJECTION_CATEGORIES.map((category) => (
                     <option key={category.value} value={category.value}>
                       {category.label}
                     </option>
                   ))}
                 </select>
               </label>
-              <label>
-                Motivo
-                <textarea
-                  className="textarea"
-                  rows={3}
-                  value={rejectReason}
-                  onChange={(event) => setRejectReason(event.target.value)}
-                  placeholder="Explica el motivo para conservar el historial"
-                  disabled={isSubmitting}
-                />
-              </label>
+              {rejectCategory === 'otro' ? (
+                <label>
+                  Motivo
+                  <textarea
+                    className="textarea"
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(event) => {
+                      setRejectReason(event.target.value);
+                      setRejectError('');
+                    }}
+                    placeholder="Explica el motivo para conservar el historial"
+                    disabled={isSubmitting}
+                    aria-invalid={Boolean(rejectError)}
+                  />
+                </label>
+              ) : null}
+              {rejectError ? <ErrorMessage message={rejectError} /> : null}
               <div className="dish-dialog__actions">
-                <Button type="button" variant="secondary" onClick={() => setRejectOrder(null)} disabled={isSubmitting}>
+                <Button type="button" variant="secondary" onClick={closeRejectDialog} disabled={isSubmitting}>
                   Cancelar
                 </Button>
                 <Button type="submit" variant="danger" disabled={isSubmitting}>

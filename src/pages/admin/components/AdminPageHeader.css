@@ -85,6 +85,7 @@
 }
 
 .admin-header-actions a {
+  position: relative;
   display: inline-flex;
   min-height: 42px;
   align-items: center;
@@ -107,6 +108,30 @@
   color: #267449;
   background: #e9f5ee;
   outline: none;
+}
+.admin-header-actions__link--unread {
+  border-color: #e7b8a4;
+  color: #8f3f22;
+  background: #fff7f1;
+}
+
+.admin-header-actions__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fffdf9;
+  border-radius: var(--radius-full);
+  padding: 0 5px;
+  color: #fff;
+  background: #c74424;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 @media (max-width: 900px) {

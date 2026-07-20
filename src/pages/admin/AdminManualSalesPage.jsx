@@ -63,7 +63,6 @@ function SaleSuccessDialog({ sale, onClose }) {
 export function AdminManualSalesPage() {
   const [menu, setMenu] = useState(null);
   const [quantities, setQuantities] = useState({});
-  const [observaciones, setObservaciones] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -128,13 +127,11 @@ export function AdminManualSalesPage() {
       const sale = await createManualSale(
         {
           items: selectedItems.map((item) => ({ menuItemId: item.id, cantidad: item.cantidad })),
-          observaciones: observaciones.trim() || null,
         },
         createIdempotencyKey(),
       );
       setCreatedSale(sale);
       setQuantities({});
-      setObservaciones('');
     } catch (requestError) {
       setFieldErrors(getApiErrors(requestError));
       setError(getApiMessage(requestError, 'No fue posible registrar la venta manual.'));
@@ -202,20 +199,6 @@ export function AdminManualSalesPage() {
                   ))}
                 </div>
                 {fieldErrors.items ? <span className="field__error">{fieldErrors.items}</span> : null}
-
-                <label className="field" htmlFor="manual-sale-observations">
-                  <span className="field__label">Observaciones</span>
-                  <textarea
-                    id="manual-sale-observations"
-                    className="input manual-sale-form__textarea"
-                    rows="4"
-                    placeholder="Ej. Venta registrada directamente en mostrador."
-                    value={observaciones}
-                    onChange={(event) => setObservaciones(event.target.value)}
-                    disabled={isSubmitting}
-                  />
-                  {fieldErrors.observaciones ? <span className="field__error">{fieldErrors.observaciones}</span> : null}
-                </label>
               </section>
 
               <aside className="manual-sale-total-card">

@@ -31,7 +31,7 @@ export const ENDPOINTS = {
   ADMIN_ORDER_REJECT: (orderId) => `/admin/orders/${orderId}/reject`,
   ADMIN_ORDER_COMPLETE: (orderId) => `/admin/orders/${orderId}/complete`,
   ADMIN_ORDER_CANCEL: (orderId) => `/admin/orders/${orderId}/cancel`,
-  ADMIN_MANUAL_SALES: '/admin/manual-sales',
+  ADMIN_MANUAL_SALES: '/admin/sales/manual',
   ADMIN_WEEKLY_REPORTS: '/admin/reports/weekly',
   ADMIN_WEEKLY_REPORT_PERSISTED_PDF: (reportId) => `/admin/reports/weekly/${reportId}/pdf`,
   ADMIN_WEEKLY_REPORT_SUMMARY: '/admin/reports/weekly/summary',

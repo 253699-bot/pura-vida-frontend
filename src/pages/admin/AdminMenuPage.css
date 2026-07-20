@@ -249,12 +249,6 @@
   box-shadow: 0 8px 22px rgb(88 61 30 / 6%);
 }
 
-.admin-today-menu__grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.4fr);
-  gap: var(--space-5);
-  align-items: start;
-}
 
 .admin-today-menu__panel {
   display: grid;
@@ -265,32 +259,6 @@
   background: #fffdf9;
 }
 
-.today-menu-form {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.today-menu-form__section {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.today-menu-form__section + .today-menu-form__section {
-  border-top: var(--border-default);
-  padding-top: var(--space-4);
-}
-
-.today-menu-form__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: end;
-}
-
-.today-menu-form__row .button,
-.today-menu-form > .button {
-  min-height: 48px;
-}
 
 .admin-dishes__heading {
   display: flex;
@@ -376,16 +344,8 @@
   white-space: nowrap;
 }
 
-.admin-dish-card__id {
-  border-radius: var(--radius-full);
-  padding: 2px var(--space-2);
-  color: #4f5f57;
-  background: #edf3ef;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-}
 
-.admin-dish-card__content > span:not(.admin-dish-card__id),
+.admin-dish-card__content > div span,
 .admin-dish-card__content > p {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
@@ -407,6 +367,8 @@
 
 .admin-dish-card__actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
 
@@ -655,8 +617,7 @@
     flex-direction: column;
   }
 
-  .admin-status-card,
-  .admin-today-menu__grid {
+  .admin-status-card {
     grid-template-columns: 1fr;
   }
 
@@ -669,13 +630,18 @@
   }
 
   .admin-dish-card {
-    grid-template-columns: 72px minmax(0, 1fr) auto;
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .admin-dish-card__price {
+    grid-column: 2 / 3;
+    justify-self: start;
   }
 
   .admin-dish-card__actions {
-    grid-column: 3 / 4;
-    grid-row: 1 / 3;
-    flex-direction: column;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-content: flex-start;
   }
 }
 
@@ -719,10 +685,6 @@
 
   .admin-dish-card__actions .button {
     flex: 1;
-  }
-
-  .today-menu-form__row {
-    grid-template-columns: 1fr;
   }
 
   .admin-dishes,

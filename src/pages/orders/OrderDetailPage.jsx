@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Clock3, Utensils } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { getMyOrder } from '../../entities/orders/orderApi.js';
+import { getOrderRejectionReason } from '../../entities/orders/orderModel.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { ClientPageLayout } from '../../shared/layouts/ClientPageLayout.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
@@ -64,13 +65,15 @@ function shouldShowEstimatedWait(order) {
     && order.tiempoEsperaEstimado.trim().length > 0;
 }
 function OrderResponseMessage({ order }) {
+  const rejectionReason = getOrderRejectionReason(order);
+
   if (order.estado === 'rechazado') {
     return (
       <section className="order-response order-response--rejected">
         <AlertCircle size={22} aria-hidden="true" />
         <div>
           <strong>Motivo de rechazo</strong>
-          <span>{order.motivoRechazo || 'La fonda no proporcionó un motivo.'}</span>
+          <span>{rejectionReason || 'La fonda no proporcionó un motivo.'}</span>
         </div>
       </section>
     );

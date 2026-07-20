@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, ImagePlus, Trash2, X } from 'lucide-react';
 import { createDish, updateDish, uploadDishImage } from '../../../entities/menu/menuApi.js';
+import { versionAssetUrl } from '../../../shared/api/assets.js';
 import { getApiErrors, getApiMessage } from '../../../shared/api/apiResponse.js';
 import { Button } from '../../../shared/ui/Button.jsx';
 import { ErrorMessage } from '../../../shared/ui/ErrorMessage.jsx';
@@ -252,6 +253,19 @@ export function EditDishDialog({ dish, onClose, onUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   useImagePreview(values, setValues);
 
+  useEffect(() => {
+    setValues({
+      nombre: dish.nombre || '',
+      tipoPlatillo: dish.tipoPlatillo || 'platillo_fuerte',
+      descripcion: dish.descripcion || '',
+      precioBase: String(dish.precioBase || ''),
+      imageFile: null,
+      imagePreviewUrl: '',
+    });
+    setFieldErrors({});
+    setImageError('');
+    setError('');
+  }, [dish.id, dish.nombre, dish.tipoPlatillo, dish.descripcion, dish.precioBase, dish.imagenUrl, dish.imagenVersion, dish.actualizadoEn]);
   async function handleSubmit(event) {
     event.preventDefault();
     const validationErrors = validateDish(values);
@@ -288,7 +302,9 @@ export function EditDishDialog({ dish, onClose, onUpdated }) {
     }
   }
 
-  return <DishForm titleId="edit-dish-title" title="Editar platillo" values={values} setValues={setValues} isSubmitting={isSubmitting} fieldErrors={fieldErrors} imageError={imageError} error={error} onSubmit={handleSubmit} onClose={onClose} submitLabel="Guardar cambios" currentImageUrl={dish.imagenUrl} />;
+  const currentImageUrl = versionAssetUrl(dish.imagenUrl, dish.imagenVersion ?? dish.actualizadoEn);
+
+  return <DishForm titleId="edit-dish-title" title="Editar platillo" values={values} setValues={setValues} isSubmitting={isSubmitting} fieldErrors={fieldErrors} imageError={imageError} error={error} onSubmit={handleSubmit} onClose={onClose} submitLabel="Guardar cambios" currentImageUrl={currentImageUrl} />;
 }
 
 export function DeleteDishDialog({ dish, isDeleting, error, onClose, onConfirm }) {

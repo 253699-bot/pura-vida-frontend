@@ -119,17 +119,6 @@
   font-size: 0.88rem;
 }
 
-.manual-sale-form__textarea {
-  min-height: 124px;
-  resize: vertical;
-  font: inherit;
-}
-
-.manual-sale-form__counter {
-  align-self: flex-end;
-  color: #93887e;
-  font-size: 0.76rem;
-}
 
 .manual-sale-total-card {
   position: sticky;

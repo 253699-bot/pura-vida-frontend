@@ -14,7 +14,6 @@ import {
 import { getAdminOrders } from '../../entities/orders/orderApi.js';
 import { CreateDishDialog, EditDishDialog } from '../../features/menu/manage-dishes/DishDialogs.jsx';
 import { MenuAvailabilityToggle } from '../../features/menu/update-availability/MenuAvailabilityToggle.jsx';
-import { TodayMenuForm } from '../../features/menu/update-today-menu/TodayMenuForm.jsx';
 import { TodayMenuList } from '../../features/menu/view-today-menu/TodayMenuList.jsx';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { Button } from '../../shared/ui/Button.jsx';
@@ -91,7 +90,6 @@ function BusinessStatusCompactCard({ status, loading, error, onUpdated }) {
     setSelectedOpen(Boolean(status?.abierto));
     setReason(status?.motivoCierre ?? '');
     setLocalError('');
-    setSuccessMessage('');
   }, [status]);
 
   const helperText = selectedOpen
@@ -221,7 +219,7 @@ function BusinessStatusCompactCard({ status, loading, error, onUpdated }) {
   );
 }
 
-function DishCard({ dish, onEdit, onDelete }) {
+function DishCard({ dish, onAddToMenu, onEdit, onDelete, isInMenu, isAdding, isAddDisabled }) {
   const imageSrc = useMemo(() => versionAssetUrl(dish.imagenUrl, dish.actualizadoEn), [dish.actualizadoEn, dish.imagenUrl]);
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -233,21 +231,23 @@ function DishCard({ dish, onEdit, onDelete }) {
     <article className="admin-dish-card">
       <div className={`admin-dish-card__visual ${imageSrc && !imageFailed ? 'admin-dish-card__visual--image' : ''}`}>
         {imageSrc && !imageFailed ? (
-          <img src={imageSrc} alt={`Fotografía de ${dish.nombre}`} onError={() => setImageFailed(true)} />
+          <img src={imageSrc} alt={`Fotograf\u00eda de ${dish.nombre}`} onError={() => setImageFailed(true)} />
         ) : (
           <Utensils aria-hidden="true" size={28} />
         )}
       </div>
       <div className="admin-dish-card__content">
         <div>
-          <span className="admin-dish-card__id">ID: {dish.id}</span>
-          <span>{dish.categoria || dish.tipoPlatillo || 'Sin categoría'}</span>
+          <span>{dish.categoria || dish.tipoPlatillo || 'Sin categor\u00eda'}</span>
         </div>
         <h3>{dish.nombre}</h3>
-        <p>{dish.descripcion || 'Sin descripción registrada.'}</p>
+        <p>{dish.descripcion || 'Sin descripci\u00f3n registrada.'}</p>
       </div>
       <strong className="admin-dish-card__price">{formatCurrency(dish.precio)}</strong>
       <div className="admin-dish-card__actions">
+        <Button type="button" variant={isInMenu ? 'secondary' : 'primary'} size="sm" onClick={() => onAddToMenu(dish)} disabled={isInMenu || isAddDisabled || !dish.id}>
+          {isAdding ? 'Agregando...' : isInMenu ? 'Ya est\u00e1 en el men\u00fa' : 'Agregar al men\u00fa'}
+        </Button>
         <Button type="button" variant="secondary" size="sm" onClick={() => onEdit(dish)}>
           <Pencil aria-hidden="true" size={16} />
           Editar
@@ -317,6 +317,7 @@ export function AdminMenuPage() {
   const [isRemovingMenuItem, setIsRemovingMenuItem] = useState(false);
   const [menuActionMessage, setMenuActionMessage] = useState('');
   const [menuActionError, setMenuActionError] = useState('');
+  const [addingDishId, setAddingDishId] = useState(null);
 
   const loadDishes = useCallback(async ({ showLoading = false } = {}) => {
     if (showLoading) {
@@ -475,12 +476,36 @@ export function AdminMenuPage() {
     }
   };
 
-  const handleMenuUpdated = (updatedMenu, message = 'Menú del día actualizado.') => {
-    setMenu(updatedMenu);
-    setMenuActionMessage(message);
-    setMenuActionError('');
-  };
 
+  const handleAddDishToMenu = async (dish) => {
+    if (!dish?.id || addingDishId !== null) {
+      return;
+    }
+
+    const currentDishIds = Array.from(new Set((menu?.items || [])
+      .map((menuItem) => menuItem.platilloId)
+      .filter((dishId) => Number.isInteger(dishId) && dishId > 0)));
+
+    if (currentDishIds.includes(dish.id)) {
+      setMenuActionMessage(`${dish.nombre} ya est\u00e1 en el men\u00fa del d\u00eda.`);
+      setMenuActionError('');
+      return;
+    }
+
+    setAddingDishId(dish.id);
+    setMenuActionError('');
+    setMenuActionMessage('');
+
+    try {
+      const updatedMenu = await updateTodayMenu(menuPayloadFromIds(menu, [...currentDishIds, dish.id]));
+      setMenu(updatedMenu);
+      setMenuActionMessage(`${dish.nombre} se agreg\u00f3 al men\u00fa del d\u00eda.`);
+    } catch (err) {
+      setMenuActionError(getApiMessage(err, 'No se pudo agregar el platillo al men\u00fa.'));
+    } finally {
+      setAddingDishId(null);
+    }
+  };
   const handleMenuItemUpdated = (updatedItem) => {
     setMenu((currentMenu) => {
       if (!currentMenu?.items?.length) {
@@ -518,6 +543,12 @@ export function AdminMenuPage() {
   };
 
   const activeDishes = dishes.filter((dish) => dish.activo !== false);
+  const publishedDishIds = useMemo(
+    () => new Set((menu?.items || [])
+      .map((item) => item.platilloId)
+      .filter((dishId) => Number.isInteger(dishId) && dishId > 0)),
+    [menu]
+  );
 
   return (
     <div className="admin-menu-layout">
@@ -563,7 +594,7 @@ export function AdminMenuPage() {
                 <div className="admin-dishes__heading">
                   <div>
                     <h2 id="admin-dishes-title">Catálogo activo</h2>
-                    <p>Usa el ID del platillo para agregarlo al menú del día.</p>
+                    <p>{'Agrega platillos directamente al men\u00fa del d\u00eda.'}</p>
                   </div>
                   <span>{activeDishes.length} platillos activos</span>
                 </div>
@@ -571,7 +602,7 @@ export function AdminMenuPage() {
                 {activeDishes.length ? (
                   <div className="admin-dishes__list">
                     {activeDishes.map((dish) => (
-                      <DishCard key={dish.id} dish={dish} onEdit={openEditDialog} onDelete={setDishToDelete} />
+                      <DishCard key={dish.id} dish={dish} onAddToMenu={handleAddDishToMenu} onEdit={openEditDialog} onDelete={setDishToDelete} isInMenu={publishedDishIds.has(dish.id)} isAdding={addingDishId === dish.id} isAddDisabled={addingDishId !== null} />
                     ))}
                   </div>
                 ) : (
@@ -582,33 +613,21 @@ export function AdminMenuPage() {
                   />
                 )}
               </section>
-
               <section className="admin-today-menu" aria-labelledby="today-menu-title">
-                <div className="admin-today-menu__grid">
-                  <div className="admin-today-menu__panel">
-                    <h3 id="today-menu-title">Configurar platillos del día</h3>
-                    <p>Agrega uno o varios IDs del catálogo activo. Los duplicados se omiten automáticamente.</p>
-                    <TodayMenuForm
-                      currentMenu={menu}
-                      availableDishes={activeDishes}
-                      onUpdated={(updatedMenu, message) => handleMenuUpdated(updatedMenu, message)}
-                    />
-                  </div>
-                  <div className="admin-today-menu__panel">
-                    <h3>Menú publicado</h3>
-                    <p>Controla qué platillos están disponibles para los clientes.</p>
-                    <TodayMenuList
-                      menu={menu}
-                      renderActions={(item) => (
-                        <div className="admin-today-menu-actions">
-                          <MenuAvailabilityToggle item={item} onUpdated={handleMenuItemUpdated} />
-                          <Button type="button" variant="secondary" size="sm" onClick={() => setMenuItemToRemove(item)}>
-                            Quitar
-                          </Button>
-                        </div>
-                      )}
-                    />
-                  </div>
+                <div className="admin-today-menu__panel">
+                  <h3 id="today-menu-title">{'Men\u00fa publicado'}</h3>
+                  <p>{'Controla qu\u00e9 platillos est\u00e1n disponibles para los clientes.'}</p>
+                  <TodayMenuList
+                    menu={menu}
+                    renderActions={(item) => (
+                      <div className="admin-today-menu-actions">
+                        <MenuAvailabilityToggle item={item} onUpdated={handleMenuItemUpdated} />
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setMenuItemToRemove(item)}>
+                          Quitar
+                        </Button>
+                      </div>
+                    )}
+                  />
                 </div>
               </section>
             </>

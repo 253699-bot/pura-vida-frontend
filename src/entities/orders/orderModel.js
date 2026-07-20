@@ -8,6 +8,19 @@ export const ORDER_STATUS_DETAILS = {
   cancelado: { label: 'Cancelado', tone: 'cancelled' }
 };
 
+export const ORDER_REJECTION_CATEGORIES = [
+  { value: 'platillo_agotado', label: 'Platillo agotado' },
+  { value: 'fonda_cerrada', label: 'Fonda cerrada' },
+  { value: 'pedido_fuera_de_horario', label: 'Pedido fuera de horario' },
+  { value: 'cantidad_no_disponible', label: 'Cantidad no disponible' },
+  { value: 'otro', label: 'Otro' }
+];
+
+const ORDER_REJECTION_CATEGORY_LABELS = ORDER_REJECTION_CATEGORIES.reduce((labels, category) => {
+  labels[category.value] = category.label;
+  return labels;
+}, {});
+
 const ORDER_STATUS = {
   PENDIENTE: 'pendiente',
   ACEPTADO: 'aceptado',
@@ -60,6 +73,8 @@ export function normalizeOrderSummary(order = {}) {
     total: Number(order.total ?? 0),
     fechaCreacion: order.fechaCreacion ?? order.createdAt ?? order.fecha ?? null,
     tiempoEsperaEstimado: order.tiempoEsperaEstimado ?? order.estimatedWaitMinutes ?? null,
+    motivoRechazo: order.motivoRechazo ?? order.rejectionReason ?? '',
+    categoriaRechazo: order.categoriaRechazo ?? order.rejectionCategory ?? '',
     articulos: Number(order.articulos ?? order.itemCount ?? order.totalItems ?? 0)
   };
 }
@@ -113,4 +128,24 @@ export function normalizeAdminOrder(order = {}) {
 
 export function getOrderStatusDetails(status) {
   return ORDER_STATUS_DETAILS[normalizeStatus(status)] || { label: 'Estado no disponible', tone: 'neutral' };
+}
+
+export function getOrderRejectionCategoryLabel(category) {
+  return ORDER_REJECTION_CATEGORY_LABELS[category] ?? '';
+}
+
+export function getOrderRejectionReason(order = {}) {
+  const category = order.categoriaRechazo ?? order.rejectionCategory ?? '';
+  const reason = String(order.motivoRechazo ?? order.rejectionReason ?? '').trim();
+
+  if (category === 'otro') {
+    return reason;
+  }
+
+  const categoryLabel = getOrderRejectionCategoryLabel(category);
+  if (categoryLabel && reason) {
+    return `${categoryLabel}: ${reason}`;
+  }
+
+  return categoryLabel || reason;
 }

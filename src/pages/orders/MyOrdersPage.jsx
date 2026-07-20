@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ReceiptText, Utensils } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getMyOrders } from '../../entities/orders/orderApi.js';
+import { getOrderRejectionReason } from '../../entities/orders/orderModel.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { ClientPageLayout } from '../../shared/layouts/ClientPageLayout.jsx';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
@@ -27,6 +28,21 @@ function shouldShowEstimatedWait(order) {
     && typeof order.tiempoEsperaEstimado === 'string'
     && order.tiempoEsperaEstimado.trim().length > 0;
 }
+
+function OrderRejectionReason({ order }) {
+  const rejectionReason = getOrderRejectionReason(order);
+
+  if (order.estado !== 'rechazado' || !rejectionReason) {
+    return null;
+  }
+
+  return (
+    <p className="order-card__reason">
+      <strong>Motivo:</strong> {rejectionReason}
+    </p>
+  );
+}
+
 function getOrderTimestamp(order) {
   const date = order.fecha || '1970-01-01';
   const time = order.hora || '00:00:00';
@@ -154,11 +170,7 @@ export function MyOrdersPage() {
                   Tiempo estimado para recoger: <strong>{order.tiempoEsperaEstimado.trim()}</strong>
                 </p>
               ) : null}
-              {order.estado === 'rechazado' && order.motivoRechazo ? (
-                <p className="order-card__reason">
-                  <strong>Motivo:</strong> {order.motivoRechazo}
-                </p>
-              ) : null}
+              <OrderRejectionReason order={order} />
             </article>
           ))}
         </section>
