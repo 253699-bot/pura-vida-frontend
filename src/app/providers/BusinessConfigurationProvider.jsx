@@ -22,7 +22,7 @@ export function BusinessConfigurationProvider({ children }) {
       setConfiguration(nextConfiguration);
       return nextConfiguration;
     } catch (requestError) {
-      setError(getApiMessage(requestError, 'No se pudo cargar la configuracion del negocio.'));
+      setError(getApiMessage(requestError, 'No se pudo cargar la configuración del negocio.'));
       return null;
     } finally {
       setIsLoading(false);

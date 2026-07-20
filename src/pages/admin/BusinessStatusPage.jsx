@@ -44,7 +44,7 @@ export function BusinessStatusPage() {
     <main className="page">
       <header className="page__header">
         <h1 className="page__title">Estado de fonda</h1>
-        <p className="page__subtitle">Actualiza si PuraVida esta abierta o cerrada hoy.</p>
+        <p className="page__subtitle">Actualiza si PuraVida está abierta o cerrada hoy.</p>
       </header>
       {isLoading ? <Loading label="Cargando estado..." /> : null}
       <ErrorMessage message={error} />

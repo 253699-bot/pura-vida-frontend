@@ -5,12 +5,6 @@ import { AppRouter } from './router.jsx';
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
-<<<<<<< Updated upstream
-  const hasStandaloneAdminHeader = ['/admin/gestion-dia', '/admin/pedidos'].includes(
-    location.pathname,
-  );
-=======
->>>>>>> Stashed changes
 
   return (
     <div className="app-shell">

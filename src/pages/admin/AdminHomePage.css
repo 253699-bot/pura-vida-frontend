@@ -217,3 +217,7 @@
     justify-content: flex-start;
   }
 }
+
+.admin-home-page__actions .admin-header-actions {
+  flex-wrap: nowrap;
+}

@@ -1,36 +1,22 @@
-<<<<<<< Updated upstream
-import { useEffect, useState } from 'react';
-import { getTodayMenu } from '../../entities/menu/menuApi.js';
-import { MenuAvailabilityToggle } from '../../features/menu/update-availability/MenuAvailabilityToggle.jsx';
-import { TodayMenuForm } from '../../features/menu/update-today-menu/TodayMenuForm.jsx';
-import { TodayMenuList } from '../../features/menu/view-today-menu/TodayMenuList.jsx';
-import { getApiMessage } from '../../shared/api/apiResponse.js';
-import { Card } from '../../shared/ui/Card.jsx';
-import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
-import { Loading } from '../../shared/ui/Loading.jsx';
-=======
-import { useCallback, useEffect, useState } from 'react';
-import { Coffee, Leaf, Pencil, Plus, Store, Trash2, Utensils, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pencil, Plus, Store, Trash2, Utensils, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getTodayBusinessStatus, updateTodayBusinessStatus } from '../../entities/business/businessApi.js';
+import {
+  getTodayBusinessStatus,
+  updateTodayBusinessStatus
+} from '../../entities/business/businessApi.js';
 import {
   deleteDish,
   getAdminDishes,
   getTodayMenu,
-  updateTodayMenu,
+  updateTodayMenu
 } from '../../entities/menu/menuApi.js';
 import { getAdminOrders } from '../../entities/orders/orderApi.js';
-import {
-  CreateDishDialog,
-  DeleteDishDialog,
-  DishCreatedDialog,
-  EditDishDialog,
-} from '../../features/menu/manage-dishes/DishDialogs.jsx';
+import { CreateDishDialog, EditDishDialog } from '../../features/menu/manage-dishes/DishDialogs.jsx';
 import { MenuAvailabilityToggle } from '../../features/menu/update-availability/MenuAvailabilityToggle.jsx';
 import { TodayMenuForm } from '../../features/menu/update-today-menu/TodayMenuForm.jsx';
 import { TodayMenuList } from '../../features/menu/view-today-menu/TodayMenuList.jsx';
-import { versionAssetUrl } from '../../shared/api/assets.js';
-import { getApiErrors, getApiMessage } from '../../shared/api/apiResponse.js';
+import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { Button } from '../../shared/ui/Button.jsx';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
@@ -38,43 +24,54 @@ import { Loading } from '../../shared/ui/Loading.jsx';
 import { formatCurrency } from '../../shared/utils/currency.js';
 import { AdminHeaderActions } from './components/AdminHeaderActions.jsx';
 import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
-
 import './AdminMenuPage.css';
 import './components/AdminPageHeader.css';
 
-const DISH_PRESENTATION = {
-  platillo_fuerte: { label: 'Plato fuerte', icon: Utensils },
-  bebida: { label: 'Bebida', icon: Coffee },
-  complemento: { label: 'Complemento', icon: Leaf },
-  postre: { label: 'Postre', icon: Utensils },
-};
+function versionAssetUrl(url, version) {
+  if (!url || !version) {
+    return url;
+  }
 
-function CloseBusinessWarningDialog({ counts, isSubmitting, onCancel }) {
-  const pending = Number(counts?.pending || 0);
-  const accepted = Number(counts?.accepted || 0);
-  const total = pending + accepted;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(version)}`;
+}
+
+function closureCountsFromError(error) {
+  const details = error?.response?.data?.details;
+  const pending = Number(details?.pendientes ?? details?.pending ?? details?.pedidosPendientes ?? 0);
+  const accepted = Number(details?.aceptados ?? details?.accepted ?? details?.pedidosAceptados ?? 0);
+  return { pending, accepted };
+}
+
+function CloseBusinessWarningDialog({ counts, onClose }) {
+  if (!counts) {
+    return null;
+  }
 
   return (
     <div className="dish-dialog-backdrop" role="presentation">
-      <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="close-business-warning-title">
+      <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="close-warning-title">
         <header className="dish-dialog__header">
           <div>
             <p>Pedidos activos</p>
-            <h2 id="close-business-warning-title">No puedes cerrar la fonda</h2>
+            <h2 id="close-warning-title">No puedes cerrar la fonda todavía</h2>
           </div>
-          <button type="button" onClick={onCancel} disabled={isSubmitting} aria-label="Cerrar"><X size={21} aria-hidden="true" /></button>
+          <button type="button" onClick={onClose} aria-label="Cerrar aviso">
+            <X aria-hidden="true" size={20} />
+          </button>
         </header>
-        <div className="admin-close-warning">
+        <div className="dish-dialog-result dish-dialog-result--danger admin-menu-remove-dialog">
           <p>No puedes cerrar la fonda mientras existan pedidos pendientes o aceptados.</p>
-          {total > 0 ? (
-            <dl>
-              <div><dt>Pendientes</dt><dd>{pending}</dd></div>
-              <div><dt>Aceptados sin finalizar</dt><dd>{accepted}</dd></div>
-            </dl>
-          ) : null}
-          <div className="dish-dialog__actions">
-            <Link className="button button--primary button--md" to="/admin/orders">Ir a pedidos</Link>
-            <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>Cancelar</Button>
+          <p>
+            Pendientes: {counts.pending}. Aceptados: {counts.accepted}.
+          </p>
+          <div className="dish-dialog-result__actions">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Entendido
+            </Button>
+            <Link className="button button--primary button--md" to="/admin/orders" onClick={onClose}>
+              Ir a pedidos
+            </Link>
           </div>
         </div>
       </section>
@@ -82,185 +79,151 @@ function CloseBusinessWarningDialog({ counts, isSubmitting, onCancel }) {
   );
 }
 
-function BusinessStatusCompactCard({ status, isLoading, loadError, onUpdated, onBeforeClose }) {
-  const [selectedOpen, setSelectedOpen] = useState(true);
-  const [motivoCierre, setMotivoCierre] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+function BusinessStatusCompactCard({ status, loading, error, onUpdated }) {
+  const [selectedOpen, setSelectedOpen] = useState(Boolean(status?.abierto));
+  const [reason, setReason] = useState(status?.motivoCierre ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localError, setLocalError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [closeWarning, setCloseWarning] = useState(null);
 
   useEffect(() => {
-    if (!status) return;
-    setSelectedOpen(status.abierto !== false);
-    setMotivoCierre(status.motivoCierre || '');
+    setSelectedOpen(Boolean(status?.abierto));
+    setReason(status?.motivoCierre ?? '');
+    setLocalError('');
+    setSuccessMessage('');
   }, [status]);
 
-  const configured = Boolean(status?.configured);
-  const isOpen = status?.abierto === true;
-  const statusText = isOpen ? 'Abierta' : 'Cerrada';
-  const helperText = !configured
-    ? 'Aún no se ha configurado el estado de hoy.'
-    : isOpen
-      ? 'Tu fonda está abierta hoy y los clientes pueden realizar pedidos.'
-      : status?.motivoCierre
-        ? `Tu fonda está cerrada hoy: ${status.motivoCierre}`
-        : 'Tu fonda está cerrada hoy y los clientes no pueden realizar pedidos.';
-
-  function chooseStatus(nextOpen) {
-    setSelectedOpen(nextOpen);
-    setFieldErrors({});
-    setError('');
-    setSuccess('');
-    setCloseWarning(null);
-    if (nextOpen) {
-      setMotivoCierre('');
-    }
-  }
-
-  function closureCountsFromError(apiError) {
-    if (apiError?.code !== 'ACTIVE_ORDERS_PREVENT_CLOSURE' && apiError?.httpStatus !== 409) {
-      return null;
-    }
-
-    return {
-      pending: Number(apiError?.errors?.pendientes || 0),
-      accepted: Number(apiError?.errors?.aceptados || 0),
-    };
-  }
+  const helperText = selectedOpen
+    ? 'Tu fonda está abierta hoy y los clientes pueden realizar pedidos.'
+    : status?.motivoCierre
+      ? `Tu fonda está cerrada. Motivo: ${status.motivoCierre}`
+      : 'Tu fonda está cerrada y los clientes no pueden realizar pedidos.';
 
   async function submitStatus() {
-    setError('');
-    setFieldErrors({});
-    setSuccess('');
+    setLocalError('');
+    setSuccessMessage('');
+    setCloseWarning(null);
 
-    if (!selectedOpen && !motivoCierre.trim()) {
-      setFieldErrors({ motivoCierre: 'Indica el motivo de cierre.' });
+    if (!selectedOpen && !reason.trim()) {
+      setLocalError('Escribe el motivo de cierre antes de guardar.');
       return;
     }
 
-    if (!selectedOpen) {
-      setIsSubmitting(true);
-      try {
-        const counts = await onBeforeClose?.();
-        if (counts && counts.pending + counts.accepted > 0) {
-          setCloseWarning(counts);
+    setIsSubmitting(true);
+    try {
+      if (!selectedOpen) {
+        const activeOrders = await getAdminOrders({ currentCycleOnly: true });
+        const pending = activeOrders.filter((order) => order.estado === 'pendiente').length;
+        const accepted = activeOrders.filter((order) => order.estado === 'aceptado').length;
+        if (pending || accepted) {
+          setCloseWarning({ pending, accepted });
           return;
         }
-      } catch (apiError) {
-        setError(getApiMessage(apiError, 'No se pudieron verificar los pedidos activos antes de cerrar.'));
-        return;
-      } finally {
-        setIsSubmitting(false);
       }
-    }
 
-    setIsSubmitting(true);
-
-    try {
-      const updatedStatus = await updateTodayBusinessStatus({
+      const updated = await updateTodayBusinessStatus({
         abierto: selectedOpen,
-        motivoCierre: selectedOpen ? null : motivoCierre.trim(),
+        motivoCierre: selectedOpen ? null : reason.trim()
       });
-      setSuccess('Estado actualizado.');
-      setCloseWarning(null);
-      onUpdated?.(updatedStatus);
-    } catch (apiError) {
-      const activeOrderCounts = closureCountsFromError(apiError);
-      if (activeOrderCounts) {
-        setCloseWarning(activeOrderCounts);
+      onUpdated(updated);
+      setReason(updated.motivoCierre ?? '');
+      const nextOpen = Boolean(updated?.abierto ?? selectedOpen);
+      setSuccessMessage(nextOpen ? 'La fonda se abrió correctamente.' : 'La fonda se cerró correctamente.');
+    } catch (err) {
+      const counts = closureCountsFromError(err);
+      if (counts.pending || counts.accepted) {
+        setCloseWarning(counts);
+        return;
       }
-      setError(getApiMessage(apiError, 'No se pudo actualizar el estado.'));
-      setFieldErrors(getApiErrors(apiError));
+      const fieldMessage = err?.errors?.motivoCierre || err?.data?.errors?.motivoCierre;
+      setLocalError(fieldMessage || getApiMessage(err, 'No se pudo actualizar el estado de la fonda.'));
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
-    submitStatus();
+  if (loading) {
+    return <Loading message="Consultando estado de la fonda..." />;
   }
 
   return (
-    <section className="admin-status-card" aria-labelledby="admin-status-title">
-      <div className="admin-status-card__summary">
-        <span className="admin-status-card__icon" aria-hidden="true">
-          <Store size={28} strokeWidth={1.8} />
-        </span>
-        <div>
-          <div className="admin-status-card__title-row">
-            <h2 id="admin-status-title">Estado de la fonda</h2>
-            {!isLoading ? (
-              <span className={`admin-status-card__badge ${isOpen ? 'admin-status-card__badge--open' : 'admin-status-card__badge--closed'}`}>
-                {configured ? statusText : 'Sin configurar'}
+    <>
+      <section className="admin-status-card" aria-labelledby="business-status-title">
+        <div className="admin-status-card__summary">
+          <span className="admin-status-card__icon" aria-hidden="true">
+            <Store size={28} />
+          </span>
+          <div>
+            <div className="admin-status-card__title-row">
+              <h2 id="business-status-title">Estado de la fonda</h2>
+              <span className={`admin-status-card__badge admin-status-card__badge--${selectedOpen ? 'open' : 'closed'}`}>
+                {selectedOpen ? 'Abierta' : 'Cerrada'}
               </span>
-            ) : null}
+            </div>
+            <p>{helperText}</p>
           </div>
-          {isLoading ? <Loading label="Cargando estado..." /> : <p>{helperText}</p>}
-          <ErrorMessage message={loadError || error} />
-          {success ? <div className="message message--success" role="status">{success}</div> : null}
         </div>
-      </div>
 
-      <form className="admin-status-card__controls" onSubmit={handleSubmit}>
-        <span>CAMBIAR ESTADO</span>
-        <div className="admin-status-segmented" role="group" aria-label="Cambiar estado de la fonda">
-          <button
-            type="button"
-            className={selectedOpen ? 'admin-status-segmented__option is-active' : 'admin-status-segmented__option'}
-            aria-pressed={selectedOpen}
-            disabled={isSubmitting || isLoading}
-            onClick={() => chooseStatus(true)}
-          >
-            Abierta
-          </button>
-          <button
-            type="button"
-            className={!selectedOpen ? 'admin-status-segmented__option is-active' : 'admin-status-segmented__option'}
-            aria-pressed={!selectedOpen}
-            disabled={isSubmitting || isLoading}
-            onClick={() => chooseStatus(false)}
-          >
-            Cerrada
-          </button>
-        </div>
-        {!selectedOpen ? (
-          <label className="admin-status-card__reason" htmlFor="admin-status-reason">
-            <span>Motivo de cierre</span>
-            <textarea
-              id="admin-status-reason"
-              className="textarea"
-              value={motivoCierre}
-              onChange={(event) => setMotivoCierre(event.target.value)}
+        <div className="admin-status-card__controls">
+          <span>CAMBIAR ESTADO</span>
+          <div className="admin-status-segmented" role="group" aria-label="Estado de la fonda">
+            <button
+              type="button"
+              className={`admin-status-segmented__option ${selectedOpen ? 'is-active' : ''}`}
+              onClick={() => {
+                setSelectedOpen(true);
+                setReason('');
+                setLocalError('');
+                setSuccessMessage('');
+              }}
               disabled={isSubmitting}
-            />
-            {fieldErrors.motivoCierre ? <small>{fieldErrors.motivoCierre}</small> : null}
-          </label>
-        ) : null}
-        <Button type="submit" size="sm" disabled={isSubmitting || isLoading}>
-          {isSubmitting ? 'Guardando...' : 'Guardar estado'}
-        </Button>
-      </form>
-
-      {closeWarning ? (
-        <CloseBusinessWarningDialog
-          counts={closeWarning}
-          isSubmitting={isSubmitting}
-          onCancel={() => setCloseWarning(null)}
-        />
-      ) : null}
-    </section>
+            >
+              Abierta
+            </button>
+            <button
+              type="button"
+              className={`admin-status-segmented__option ${!selectedOpen ? 'is-active' : ''}`}
+              onClick={() => {
+                setSelectedOpen(false);
+                setSuccessMessage('');
+              }}
+              disabled={isSubmitting}
+            >
+              Cerrada
+            </button>
+          </div>
+          {!selectedOpen ? (
+            <label className="admin-status-card__reason">
+              <span>Motivo de cierre</span>
+              <textarea
+                className="textarea"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Ej. Se agotaron los platillos disponibles"
+                rows={3}
+                disabled={isSubmitting}
+              />
+              {localError ? <small>{localError}</small> : null}
+            </label>
+          ) : localError ? (
+            <ErrorMessage message={localError} />
+          ) : null}
+          {error ? <ErrorMessage message={error} /> : null}
+          {successMessage ? <div className="message message--success" role="status">{successMessage}</div> : null}
+          <Button type="button" onClick={submitStatus} disabled={isSubmitting}>
+            {isSubmitting ? 'Guardando...' : 'Guardar estado'}
+          </Button>
+        </div>
+      </section>
+      <CloseBusinessWarningDialog counts={closeWarning} onClose={() => setCloseWarning(null)} />
+    </>
   );
 }
 
 function DishCard({ dish, onEdit, onDelete }) {
-  const presentation = DISH_PRESENTATION[dish.tipoPlatillo] || DISH_PRESENTATION.platillo_fuerte;
-  const Icon = presentation.icon;
+  const imageSrc = useMemo(() => versionAssetUrl(dish.imagenUrl, dish.actualizadoEn), [dish.actualizadoEn, dish.imagenUrl]);
   const [imageFailed, setImageFailed] = useState(false);
-  const imageSrc = versionAssetUrl(dish.imagenUrl, dish.actualizadoEn);
-  const hasImage = Boolean(imageSrc) && !imageFailed;
 
   useEffect(() => {
     setImageFailed(false);
@@ -268,51 +231,61 @@ function DishCard({ dish, onEdit, onDelete }) {
 
   return (
     <article className="admin-dish-card">
-      <span className={`admin-dish-card__visual ${hasImage ? 'admin-dish-card__visual--image' : ''}`} aria-hidden="true">
-        {hasImage ? <img src={imageSrc} alt="" onError={() => setImageFailed(true)} /> : <Icon size={30} strokeWidth={1.8} />}
-      </span>
+      <div className={`admin-dish-card__visual ${imageSrc && !imageFailed ? 'admin-dish-card__visual--image' : ''}`}>
+        {imageSrc && !imageFailed ? (
+          <img src={imageSrc} alt={`Fotografía de ${dish.nombre}`} onError={() => setImageFailed(true)} />
+        ) : (
+          <Utensils aria-hidden="true" size={28} />
+        )}
+      </div>
       <div className="admin-dish-card__content">
         <div>
-          <h3>{dish.nombre}</h3>
           <span className="admin-dish-card__id">ID: {dish.id}</span>
+          <span>{dish.categoria || dish.tipoPlatillo || 'Sin categoría'}</span>
         </div>
-        <span>{presentation.label}</span>
-        <p>{dish.descripcion || 'Sin descripción.'}</p>
+        <h3>{dish.nombre}</h3>
+        <p>{dish.descripcion || 'Sin descripción registrada.'}</p>
       </div>
-      <strong className="admin-dish-card__price">{formatCurrency(dish.precioBase)}</strong>
-      <div className="admin-dish-card__actions" aria-label={`Acciones para ${dish.nombre}`}>
-        <Button variant="secondary" size="sm" onClick={() => onEdit(dish)}>
-          <Pencil size={16} aria-hidden="true" />
+      <strong className="admin-dish-card__price">{formatCurrency(dish.precio)}</strong>
+      <div className="admin-dish-card__actions">
+        <Button type="button" variant="secondary" size="sm" onClick={() => onEdit(dish)}>
+          <Pencil aria-hidden="true" size={16} />
           Editar
         </Button>
-        <Button variant="danger" size="sm" onClick={() => onDelete(dish)}>
-          <Trash2 size={16} aria-hidden="true" />
+        <Button type="button" variant="danger" size="sm" onClick={() => onDelete(dish)}>
+          <Trash2 aria-hidden="true" size={16} />
           Eliminar
         </Button>
       </div>
     </article>
   );
 }
->>>>>>> Stashed changes
 
-function RemoveMenuItemDialog({ item, isRemoving, error, onClose, onConfirm }) {
+function RemoveMenuItemDialog({ item, onClose, onConfirm, isSubmitting }) {
+  if (!item) {
+    return null;
+  }
+
   return (
     <div className="dish-dialog-backdrop" role="presentation">
       <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="remove-menu-item-title">
         <header className="dish-dialog__header">
           <div>
             <p>Menú del día</p>
-            <h2 id="remove-menu-item-title">¿Quitar platillo?</h2>
+            <h2 id="remove-menu-item-title">Quitar platillo</h2>
           </div>
-          <button type="button" onClick={onClose} disabled={isRemoving} aria-label="Cerrar"><X size={21} aria-hidden="true" /></button>
+          <button type="button" onClick={onClose} aria-label="Cerrar diálogo" disabled={isSubmitting}>
+            <X aria-hidden="true" size={20} />
+          </button>
         </header>
-        <div className="admin-menu-remove-dialog">
-          <p>{item.nombre} dejará de publicarse hoy, pero seguirá en el catálogo activo y podrá agregarse después.</p>
-          <ErrorMessage message={error} />
-          <div className="dish-dialog__actions">
-            <Button variant="secondary" onClick={onClose} disabled={isRemoving}>Volver</Button>
-            <Button variant="danger" onClick={onConfirm} disabled={isRemoving}>
-              {isRemoving ? 'Quitando...' : 'Quitar del menú'}
+        <div className="dish-dialog-result dish-dialog-result--danger admin-menu-remove-dialog">
+          <p>¿Deseas quitar {item.nombre} del menú del día?</p>
+          <div className="dish-dialog-result__actions">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="danger" onClick={() => onConfirm(item)} disabled={isSubmitting}>
+              {isSubmitting ? 'Quitando...' : 'Quitar del menú'}
             </Button>
           </div>
         </div>
@@ -321,418 +294,374 @@ function RemoveMenuItemDialog({ item, isRemoving, error, onClose, onConfirm }) {
   );
 }
 
-function menuPayloadFromIds(ids) {
-  return { items: ids.map((platilloId) => ({ platilloId })) };
+function menuPayloadFromIds(_menu, ids) {
+  return {
+    items: ids.map((platilloId) => ({ platilloId }))
+  };
 }
 
 export function AdminMenuPage() {
   const [menu, setMenu] = useState(null);
-<<<<<<< Updated upstream
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-=======
+  const [dishes, setDishes] = useState([]);
   const [businessStatus, setBusinessStatus] = useState(null);
-  const [dishesError, setDishesError] = useState('');
-  const [menuError, setMenuError] = useState('');
-  const [statusError, setStatusError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isLoadingDishes, setIsLoadingDishes] = useState(true);
-  const [isLoadingMenu, setIsLoadingMenu] = useState(true);
-  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createdDish, setCreatedDish] = useState(null);
-  const [editingDish, setEditingDish] = useState(null);
-  const [deletingDish, setDeletingDish] = useState(null);
-  const [removingMenuItem, setRemovingMenuItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [businessLoading, setBusinessLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [businessError, setBusinessError] = useState('');
+  const [dialogMode, setDialogMode] = useState(null);
+  const [selectedDish, setSelectedDish] = useState(null);
+  const [dishToDelete, setDishToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState('');
-  const [removeMenuError, setRemoveMenuError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [menuItemToRemove, setMenuItemToRemove] = useState(null);
   const [isRemovingMenuItem, setIsRemovingMenuItem] = useState(false);
+  const [menuActionMessage, setMenuActionMessage] = useState('');
+  const [menuActionError, setMenuActionError] = useState('');
 
   const loadDishes = useCallback(async ({ showLoading = false } = {}) => {
-    if (showLoading) setIsLoadingDishes(true);
-    setDishesError('');
-
+    if (showLoading) {
+      setLoading(true);
+    }
+    setError('');
     try {
-      const activeDishes = await getAdminDishes();
-      setDishes(activeDishes);
-      return activeDishes;
-    } catch (apiError) {
-      setDishesError(getApiMessage(apiError, 'No se pudo consultar el catálogo de platillos.'));
-      return null;
+      const items = await getAdminDishes();
+      setDishes(items);
+      return items;
+    } catch (err) {
+      setError(getApiMessage(err, 'No se pudo consultar el catálogo de platillos.'));
+      return [];
     } finally {
-      if (showLoading) setIsLoadingDishes(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
 
   const loadMenu = useCallback(async ({ showLoading = false } = {}) => {
-    if (showLoading) setIsLoadingMenu(true);
-    setMenuError('');
-
+    if (showLoading) {
+      setLoading(true);
+    }
+    setError('');
     try {
-      const todayMenu = await getTodayMenu();
-      setMenu(todayMenu);
-      return todayMenu;
-    } catch (apiError) {
-      setMenuError(getApiMessage(apiError, 'No se pudo consultar el menú de hoy.'));
+      const currentMenu = await getTodayMenu();
+      setMenu(currentMenu);
+      return currentMenu;
+    } catch (err) {
+      setError(getApiMessage(err, 'No se pudo consultar el menú del día.'));
       return null;
     } finally {
-      if (showLoading) setIsLoadingMenu(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
->>>>>>> Stashed changes
 
   useEffect(() => {
     let isMounted = true;
 
-<<<<<<< Updated upstream
-    async function loadMenu() {
-      try {
-        const todayMenu = await getTodayMenu();
-
-        if (isMounted) {
-          setMenu(todayMenu);
-        }
-      } catch (apiError) {
-        if (isMounted) {
-          setError(getApiMessage(apiError, 'No se pudo consultar el menu de hoy.'));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-=======
     async function loadPage() {
-      const [dishesResult, menuResult, statusResult] = await Promise.allSettled([
-        getAdminDishes(),
+      setLoading(true);
+      setBusinessLoading(true);
+      setError('');
+      setBusinessError('');
+      const [menuResult, dishesResult, statusResult] = await Promise.allSettled([
         getTodayMenu(),
-        getTodayBusinessStatus(),
+        getAdminDishes(),
+        getTodayBusinessStatus()
       ]);
 
-      if (!isMounted) return;
-
-      if (dishesResult.status === 'fulfilled') {
-        setDishes(dishesResult.value);
-      } else {
-        setDishesError(getApiMessage(dishesResult.reason, 'No se pudo consultar el catálogo de platillos.'));
+      if (!isMounted) {
+        return;
       }
 
       if (menuResult.status === 'fulfilled') {
         setMenu(menuResult.value);
       } else {
-        setMenuError(getApiMessage(menuResult.reason, 'No se pudo consultar el menú de hoy.'));
+        setError(getApiMessage(menuResult.reason, 'No se pudo consultar el menú del día.'));
+      }
+
+      if (dishesResult.status === 'fulfilled') {
+        setDishes(dishesResult.value);
+      } else {
+        setError(getApiMessage(dishesResult.reason, 'No se pudo consultar el catálogo de platillos.'));
       }
 
       if (statusResult.status === 'fulfilled') {
         setBusinessStatus(statusResult.value);
       } else {
-        setStatusError(getApiMessage(statusResult.reason, 'No se pudo consultar el estado de la fonda.'));
+        setBusinessError(getApiMessage(statusResult.reason, 'No se pudo consultar el estado de la fonda.'));
       }
 
-      setIsLoadingDishes(false);
-      setIsLoadingMenu(false);
-      setIsLoadingStatus(false);
->>>>>>> Stashed changes
+      setLoading(false);
+      setBusinessLoading(false);
     }
 
-    loadMenu();
+    loadPage();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-<<<<<<< Updated upstream
-=======
-  async function getActiveOrderCounts() {
-    const [pendingOrders, acceptedOrders] = await Promise.all([
-      getAdminOrders({ estado: 'pendiente', currentCycleOnly: true }),
-      getAdminOrders({ estado: 'aceptado', currentCycleOnly: true }),
-    ]);
+  const openCreateDialog = () => {
+    setSelectedDish(null);
+    setDialogMode('create');
+  };
 
-    return { pending: pendingOrders.length, accepted: acceptedOrders.length };
-  }
+  const openEditDialog = (dish) => {
+    setSelectedDish(dish);
+    setDialogMode('edit');
+  };
 
-  async function handleDishCreated(dish) {
-    setIsCreateOpen(false);
-    setSuccessMessage('');
-    setDishes((currentDishes) => {
-      if (!dish?.id) return currentDishes;
-      const exists = currentDishes.some((currentDish) => currentDish.id === dish.id);
-      return exists
-        ? currentDishes.map((currentDish) => (currentDish.id === dish.id ? dish : currentDish))
-        : [dish, ...currentDishes];
-    });
-    setCreatedDish(dish);
-  }
+  const closeDishDialog = () => {
+    setDialogMode(null);
+    setSelectedDish(null);
+  };
 
-  async function handleDishUpdated(updatedDish) {
-    if (updatedDish?.id) {
-      setDishes((currentDishes) => currentDishes.map((dish) => (
-        dish.id === updatedDish.id ? updatedDish : dish
-      )));
+  const handleDishCreated = async (dish) => {
+    const nextDish = dish ? { ...dish, imagenVersion: Date.now() } : dish;
+    if (nextDish?.id) {
+      setDishes((current) => [nextDish, ...current.filter((item) => item.id !== nextDish.id)]);
     }
+    await Promise.all([loadDishes(), loadMenu()]);
+    closeDishDialog();
+  };
 
-    const refreshedMenu = await loadMenu();
-    if (updatedDish?.id && refreshedMenu) {
-      setMenu((currentMenu) => {
-        const sourceMenu = currentMenu || refreshedMenu;
-
-        return {
-          ...sourceMenu,
-          items: sourceMenu.items.map((item) => (
-            item.platilloId === updatedDish.id
-              ? {
-                ...item,
-                imagenUrl: updatedDish.imagenUrl,
-                imagenVersion: updatedDish.actualizadoEn,
-              }
-              : item
-          )),
-        };
-      });
-    }
-
-    setSuccessMessage('Platillo actualizado.');
-  }
-
-  function handleRequestDelete(dish) {
-    setDeleteError('');
-    setDeletingDish(dish);
-  }
-
-  async function handleConfirmDelete() {
-    if (!deletingDish) return;
-
-    setDeleteError('');
-    setIsDeleting(true);
-
-    try {
-      await deleteDish(deletingDish.id);
-      const deletedName = deletingDish.nombre;
-      setDeletingDish(null);
-      await Promise.all([loadDishes(), loadMenu()]);
-      setSuccessMessage(`${deletedName} dejó de estar disponible y permanece en el historial.`);
-    } catch (apiError) {
-      setDeleteError(getApiMessage(apiError, 'No se pudo eliminar el platillo.'));
-
-      if (apiError?.httpStatus === 409) {
-        await loadDishes();
+  const handleDishUpdated = async (dish) => {
+    const imageVersion = Date.now();
+    const nextDish = { ...dish, imagenVersion: imageVersion };
+    setDishes((current) => current.map((item) => (item.id === nextDish.id ? nextDish : item)));
+    setMenu((currentMenu) => {
+      if (!currentMenu?.items?.length) {
+        return currentMenu;
       }
+      return {
+        ...currentMenu,
+        items: currentMenu.items.map((item) =>
+          item.platilloId === nextDish.id
+            ? {
+                ...item,
+                nombre: nextDish.nombre,
+                descripcion: nextDish.descripcion,
+                precio: nextDish.precio,
+                categoria: nextDish.categoria,
+                tipoPlatillo: nextDish.tipoPlatillo,
+                imagenUrl: nextDish.imagenUrl,
+                imagenVersion: imageVersion
+              }
+            : item
+        )
+      };
+    });
+    await Promise.all([loadDishes(), loadMenu()]);
+    closeDishDialog();
+  };
+
+  const handleDeleteDish = async () => {
+    if (!dishToDelete) {
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteDish(dishToDelete.id);
+      setDishes((current) => current.filter((dish) => dish.id !== dishToDelete.id));
+      setDishToDelete(null);
+      await loadMenu();
+    } catch (err) {
+      setDeleteError(getApiMessage(err, 'No se pudo eliminar el platillo.'));
     } finally {
       setIsDeleting(false);
     }
-  }
+  };
 
-  function handleRequestRemoveMenuItem(item) {
-    setRemoveMenuError('');
-    setRemovingMenuItem(item);
-  }
+  const handleMenuUpdated = (updatedMenu, message = 'Menú del día actualizado.') => {
+    setMenu(updatedMenu);
+    setMenuActionMessage(message);
+    setMenuActionError('');
+  };
 
-  async function handleConfirmRemoveMenuItem() {
-    if (!removingMenuItem || !menu) return;
+  const handleMenuItemUpdated = (updatedItem) => {
+    setMenu((currentMenu) => {
+      if (!currentMenu?.items?.length) {
+        return currentMenu;
+      }
+      return {
+        ...currentMenu,
+        items: currentMenu.items.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+      };
+    });
+    setMenuActionMessage(`${updatedItem.nombre} actualizado en el menú del día.`);
+    setMenuActionError('');
+  };
 
-    const nextDishIds = (menu.items || [])
-      .filter((item) => item.id !== removingMenuItem.id)
-      .map((item) => item.platilloId)
-      .filter((id) => Number.isInteger(id) && id > 0);
+  const handleRemoveMenuItem = async (item) => {
+    if (!menu) {
+      return;
+    }
 
     setIsRemovingMenuItem(true);
-    setRemoveMenuError('');
-
+    setMenuActionError('');
+    setMenuActionMessage('');
     try {
-      const updatedMenu = await updateTodayMenu(menuPayloadFromIds(nextDishIds));
+      const currentDishIds = menu?.items.map((menuItem) => menuItem.platilloId).filter(Boolean);
+      const nextDishIds = currentDishIds.filter((dishId) => dishId !== item.platilloId);
+      const updatedMenu = await updateTodayMenu(menuPayloadFromIds(menu, nextDishIds));
       setMenu(updatedMenu);
-      setRemovingMenuItem(null);
-      setSuccessMessage(`${removingMenuItem.nombre} se quitó del menú publicado de hoy.`);
-    } catch (apiError) {
-      setRemoveMenuError(getApiMessage(apiError, 'No se pudo quitar el platillo del menú.'));
+      setMenuItemToRemove(null);
+      setMenuActionMessage(`${item.nombre} se quitó del menú del día.`);
+    } catch (err) {
+      setMenuActionError(getApiMessage(err, 'No se pudo quitar el platillo del menú.'));
     } finally {
       setIsRemovingMenuItem(false);
     }
-  }
+  };
 
->>>>>>> Stashed changes
-  function handleItemUpdated(updatedItem) {
-    setMenu((currentMenu) => {
-      if (!currentMenu) return currentMenu;
-
-      return {
-        ...currentMenu,
-        items: currentMenu.items.map((item) => (item.id === updatedItem.id ? updatedItem : item)),
-      };
-    });
-  }
+  const activeDishes = dishes.filter((dish) => dish.activo !== false);
 
   return (
-<<<<<<< Updated upstream
-    <main className="page">
-      <header className="page__header">
-        <h1 className="page__title">Menu del dia</h1>
-        <p className="page__subtitle">Configura el menu y cambia disponibilidad de platillos.</p>
-      </header>
-      {isLoading ? <Loading label="Cargando menu..." /> : null}
-      <ErrorMessage message={error} />
-      <div className="section-grid">
-        <Card>
-          <div className="stack">
-            <div>
-              <h2 className="card__title">Configurar platillos</h2>
-              <p className="card__meta">
-                Temporal hasta implementar catalogo de platillos: captura IDs separados por coma.
-              </p>
-=======
     <div className="admin-menu-layout">
       <AdminWorkspaceSidebar activePath="/admin/menu" />
-
       <main className="admin-menu-page">
         <header className="admin-menu-header">
-          <div className="admin-menu-header__title">
-            <div>
-              <p className="admin-menu-header__eyebrow">Menú y catálogo</p>
-              <h1 className="admin-page-header__title">Administración de platillos</h1>
-              <span>Crea platillos, consulta el catálogo activo y configura el menú del día.</span>
->>>>>>> Stashed changes
-            </div>
-            <TodayMenuForm onUpdated={setMenu} />
+          <div>
+            <p className="admin-page-header__eyebrow">{'MEN\u00da'}</p>
+            <h1 className="admin-page-header__title">{'Administraci\u00f3n de platillos'}</h1>
+            <span className="admin-page-header__subtitle">{'Organiza el cat\u00e1logo, el men\u00fa del d\u00eda y la disponibilidad.'}</span>
           </div>
-<<<<<<< Updated upstream
-        </Card>
-        <div className="stack">
-          {menu ? (
-            <TodayMenuList
-              menu={menu}
-              renderActions={(item) => (
-                <MenuAvailabilityToggle item={item} onUpdated={handleItemUpdated} />
-              )}
-            />
-          ) : null}
-        </div>
-      </div>
-    </main>
-=======
           <AdminHeaderActions />
         </header>
 
-        <div className="admin-menu-page__content">
-          <ErrorMessage message={dishesError} />
-          {successMessage ? <div className="message message--success" role="status">{successMessage}</div> : null}
-
+        <section className="admin-menu-page__content" aria-label={'Administraci\u00f3n del men\u00fa'}>
           <BusinessStatusCompactCard
             status={businessStatus}
-            isLoading={isLoadingStatus}
-            loadError={statusError}
+            loading={businessLoading}
+            error={businessError}
             onUpdated={setBusinessStatus}
-            onBeforeClose={getActiveOrderCounts}
           />
 
-          <section className="admin-menu-management-header" aria-labelledby="admin-today-menu-title">
+          <div className="admin-menu-management-header">
             <div>
-              <h2 id="admin-today-menu-title">Menú del día</h2>
-              <p>Administra los platillos de tu menú publicado de hoy.</p>
+              <h2>Menú del día</h2>
+              <p>Administra los platillos de tu menú</p>
             </div>
-            <Button onClick={() => {
-              setSuccessMessage('');
-              setIsCreateOpen(true);
-            }}>
-              <Plus size={18} aria-hidden="true" />
+            <Button type="button" onClick={openCreateDialog}>
+              <Plus aria-hidden="true" size={18} />
               Agregar platillo
             </Button>
-          </section>
+          </div>
 
-          <section className="admin-dishes" aria-labelledby="admin-dishes-title">
-            <div className="admin-dishes__heading">
-              <div>
-                <h2 id="admin-dishes-title">Catálogo activo</h2>
-                <p>Los platillos eliminados se conservan en el historial y dejan de aparecer aquí.</p>
-              </div>
-              {!isLoadingDishes && !dishesError ? <span>{dishes.length} activos</span> : null}
-            </div>
+          {error ? <ErrorMessage message={error} /> : null}
+          {menuActionError ? <ErrorMessage message={menuActionError} /> : null}
+          {menuActionMessage ? <p className="form-success">{menuActionMessage}</p> : null}
 
-            {isLoadingDishes ? <Loading label="Cargando platillos..." /> : null}
-            {!isLoadingDishes && !dishesError && dishes.length === 0 ? (
-              <EmptyState title="No hay platillos activos" message="Agrega el primer platillo para comenzar el catálogo." />
-            ) : null}
-            {!isLoadingDishes && dishes.length > 0 ? (
-              <div className="admin-dishes__list">
-                {dishes.map((dish) => (
-                  <DishCard dish={dish} onEdit={setEditingDish} onDelete={handleRequestDelete} key={dish.id} />
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="admin-today-menu" aria-label="Administrar menú publicado de hoy">
-            {isLoadingMenu ? <Loading label="Cargando menú de hoy..." /> : null}
-            <ErrorMessage message={menuError} />
-            {!isLoadingMenu ? (
-              <div className="admin-today-menu__grid">
-                <div className="admin-today-menu__panel">
+          {loading ? (
+            <Loading message="Consultando menú y catálogo..." />
+          ) : (
+            <>
+              <section className="admin-dishes" aria-labelledby="admin-dishes-title">
+                <div className="admin-dishes__heading">
                   <div>
-                    <h3>Configurar platillos publicados</h3>
-                    <p>Captura los IDs visibles en el catálogo.</p>
+                    <h2 id="admin-dishes-title">Catálogo activo</h2>
+                    <p>Usa el ID del platillo para agregarlo al menú del día.</p>
                   </div>
-                  <TodayMenuForm currentMenu={menu} onUpdated={setMenu} />
+                  <span>{activeDishes.length} platillos activos</span>
                 </div>
-                <div className="stack">
-                  {menu ? (
+
+                {activeDishes.length ? (
+                  <div className="admin-dishes__list">
+                    {activeDishes.map((dish) => (
+                      <DishCard key={dish.id} dish={dish} onEdit={openEditDialog} onDelete={setDishToDelete} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={Utensils}
+                    title="Sin platillos activos"
+                    description="Crea platillos para agregarlos al menú del día."
+                  />
+                )}
+              </section>
+
+              <section className="admin-today-menu" aria-labelledby="today-menu-title">
+                <div className="admin-today-menu__grid">
+                  <div className="admin-today-menu__panel">
+                    <h3 id="today-menu-title">Configurar platillos del día</h3>
+                    <p>Agrega uno o varios IDs del catálogo activo. Los duplicados se omiten automáticamente.</p>
+                    <TodayMenuForm
+                      currentMenu={menu}
+                      availableDishes={activeDishes}
+                      onUpdated={(updatedMenu, message) => handleMenuUpdated(updatedMenu, message)}
+                    />
+                  </div>
+                  <div className="admin-today-menu__panel">
+                    <h3>Menú publicado</h3>
+                    <p>Controla qué platillos están disponibles para los clientes.</p>
                     <TodayMenuList
                       menu={menu}
                       renderActions={(item) => (
                         <div className="admin-today-menu-actions">
-                          <MenuAvailabilityToggle item={item} onUpdated={handleItemUpdated} />
-                          <Button variant="danger" size="sm" onClick={() => handleRequestRemoveMenuItem(item)} disabled={isRemovingMenuItem}>
-                            <Trash2 size={16} aria-hidden="true" />
+                          <MenuAvailabilityToggle item={item} onUpdated={handleMenuItemUpdated} />
+                          <Button type="button" variant="secondary" size="sm" onClick={() => setMenuItemToRemove(item)}>
                             Quitar
                           </Button>
                         </div>
                       )}
                     />
-                  ) : null}
+                  </div>
                 </div>
+              </section>
+            </>
+          )}
+        </section>
+      </main>
+
+      {dialogMode === 'create' ? (
+        <CreateDishDialog onClose={closeDishDialog} onCreated={handleDishCreated} />
+      ) : null}
+
+      {dialogMode === 'edit' && selectedDish ? (
+        <EditDishDialog dish={selectedDish} onClose={closeDishDialog} onUpdated={handleDishUpdated} />
+      ) : null}
+
+      <RemoveMenuItemDialog
+        item={menuItemToRemove}
+        isSubmitting={isRemovingMenuItem}
+        onClose={() => setMenuItemToRemove(null)}
+        onConfirm={handleRemoveMenuItem}
+      />
+
+      {dishToDelete ? (
+        <div className="dish-dialog-backdrop" role="presentation">
+          <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="delete-dish-title">
+            <header className="dish-dialog__header">
+              <div>
+                <p>Catálogo activo</p>
+                <h2 id="delete-dish-title">Eliminar platillo</h2>
               </div>
-            ) : null}
+              <button type="button" onClick={() => setDishToDelete(null)} aria-label="Cerrar diálogo" disabled={isDeleting}>
+                <X aria-hidden="true" size={20} />
+              </button>
+            </header>
+            <div className="dish-dialog-result dish-dialog-result--danger">
+              <span className="dish-dialog-result__icon" aria-hidden="true">
+                <Trash2 size={28} />
+              </span>
+              <h2>¿Eliminar {dishToDelete.nombre}?</h2>
+              <p>El platillo dejará de aparecer en el catálogo activo, pero se conservará el historial.</p>
+              {deleteError ? <ErrorMessage message={deleteError} /> : null}
+              <div className="dish-dialog-result__actions">
+                <Button type="button" variant="secondary" onClick={() => setDishToDelete(null)} disabled={isDeleting}>
+                  Cancelar
+                </Button>
+                <Button type="button" variant="danger" onClick={handleDeleteDish} disabled={isDeleting}>
+                  {isDeleting ? 'Eliminando...' : 'Eliminar platillo'}
+                </Button>
+              </div>
+            </div>
           </section>
         </div>
-
-        {isCreateOpen ? (
-          <CreateDishDialog onClose={() => setIsCreateOpen(false)} onCreated={handleDishCreated} />
-        ) : null}
-        {createdDish ? <DishCreatedDialog dish={createdDish} onClose={() => setCreatedDish(null)} /> : null}
-        {editingDish ? (
-          <EditDishDialog
-            dish={editingDish}
-            onClose={() => setEditingDish(null)}
-            onUpdated={handleDishUpdated}
-          />
-        ) : null}
-        {deletingDish ? (
-          <DeleteDishDialog
-            dish={deletingDish}
-            isDeleting={isDeleting}
-            error={deleteError}
-            onClose={() => {
-              setDeleteError('');
-              setDeletingDish(null);
-            }}
-            onConfirm={handleConfirmDelete}
-          />
-        ) : null}
-        {removingMenuItem ? (
-          <RemoveMenuItemDialog
-            item={removingMenuItem}
-            isRemoving={isRemovingMenuItem}
-            error={removeMenuError}
-            onClose={() => {
-              setRemoveMenuError('');
-              setRemovingMenuItem(null);
-            }}
-            onConfirm={handleConfirmRemoveMenuItem}
-          />
-        ) : null}
-      </main>
+      ) : null}
     </div>
->>>>>>> Stashed changes
   );
 }

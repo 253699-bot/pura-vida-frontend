@@ -149,7 +149,7 @@ export function NotificationsPage() {
       ) : null}
 
       {notifications.length ? (
-        <section className="notifications-list" aria-label="eistado de notificaciones">
+        <section className="notifications-list" aria-label="Listado de notificaciones">
           {notifications.map((notification) => {
             const details = getNotificationTypeDetails(notification.tipo);
             const isPending = pendingId === notification.id;
