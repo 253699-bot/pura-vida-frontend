@@ -1,0 +1,100 @@
+.logout-confirmation {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: var(--space-6);
+  background: rgba(var(--color-black-rgb), 0.48);
+  backdrop-filter: blur(4px);
+}
+
+.logout-confirmation__panel {
+  position: relative;
+  display: grid;
+  width: min(100%, 430px);
+  justify-items: center;
+  gap: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.logout-confirmation__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.logout-confirmation__close:hover:not(:disabled),
+.logout-confirmation__close:focus-visible {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  outline: none;
+}
+
+.logout-confirmation__close:disabled {
+  cursor: not-allowed;
+  opacity: var(--opacity-disabled);
+}
+
+.logout-confirmation__icon {
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  border-radius: var(--radius-full);
+  color: var(--color-error);
+  background: var(--color-error-soft);
+}
+
+.logout-confirmation h2,
+.logout-confirmation p {
+  margin: 0;
+}
+
+.logout-confirmation h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-2xl);
+}
+
+.logout-confirmation p {
+  color: var(--color-text-muted);
+}
+
+.logout-confirmation__actions {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 520px) {
+  .logout-confirmation {
+    align-items: end;
+    padding: 0;
+  }
+
+  .logout-confirmation__panel {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: var(--space-8) var(--space-5);
+  }
+
+  .logout-confirmation__actions {
+    display: grid;
+  }
+}

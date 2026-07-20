@@ -1,47 +1,26 @@
-import { Clock3, MessageSquareText } from 'lucide-react';
-import { formatCurrency } from '../../../shared/utils/currency.js';
+import { Clock, Eye, UserRound } from 'lucide-react';
 import { Button } from '../../../shared/ui/Button.jsx';
-import { Card } from '../../../shared/ui/Card.jsx';
+import { formatCurrency } from '../../../shared/utils/currency.js';
 
-const STATUS_PRESENTATION = {
+const STATUS_DETAILS = {
+  pendiente: { label: 'Pendiente', tone: 'pending' },
+  aceptado: { label: 'Aceptado', tone: 'accepted' },
+  finalizado: { label: 'Finalizado', tone: 'completed' },
+  rechazado: { label: 'Rechazado', tone: 'rejected' },
+  cancelado: { label: 'Cancelado', tone: 'cancelled' },
   pending: { label: 'Pendiente', tone: 'pending' },
   accepted: { label: 'Aceptado', tone: 'accepted' },
-  rejected: { label: 'Rechazado', tone: 'rejected' },
   completed: { label: 'Finalizado', tone: 'completed' },
-  cancelled: { label: 'Cancelado', tone: 'cancelled' },
-  neutral: { label: 'Estado no disponible', tone: 'neutral' },
+  rejected: { label: 'Rechazado', tone: 'rejected' },
+  cancelled: { label: 'Cancelado', tone: 'cancelled' }
 };
-
-const STATUS_ALIASES = {
-  pendiente: 'pending',
-  pending: 'pending',
-  aceptado: 'accepted',
-  accepted: 'accepted',
-  rechazado: 'rejected',
-  rejected: 'rejected',
-  entregado: 'completed',
-  finalizado: 'completed',
-  completed: 'completed',
-  cancelado: 'cancelled',
-  cancelled: 'cancelled',
-};
-
-function getStatusPresentation(status) {
-  const normalizedStatus = STATUS_ALIASES[String(status || '').toLowerCase()] || 'neutral';
-
-  return {
-    key: normalizedStatus,
-    ...STATUS_PRESENTATION[normalizedStatus],
-  };
-}
 
 function formatOrderTime(value) {
   if (!value) {
-    return 'Hora no disponible';
+    return 'Sin fecha';
   }
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return value;
   }
@@ -50,99 +29,74 @@ function formatOrderTime(value) {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   }).format(date);
 }
 
-export function OrderCard({
-  order,
-  actionsAvailable = false,
-  isUpdating = false,
-  onAccept,
-  onReject,
-  onComplete,
-}) {
-  const status = getStatusPresentation(order.status);
-  const items = Array.isArray(order.items) ? order.items : [];
+export function OrderCard({ order, onAccept, onReject, onComplete, onCancel, onView }) {
+  const status = STATUS_DETAILS[order.estado] ?? STATUS_DETAILS.pendiente;
+  const isPending = order.estado === 'pendiente' || order.estado === 'pending';
+  const isAccepted = order.estado === 'aceptado' || order.estado === 'accepted';
 
   return (
-    <Card className="admin-order-card">
-      <header className="admin-order-card__header">
+    <article className="order-card">
+      <div className="order-card__header">
         <div>
-          <h2>{order.customerName || 'Cliente'}</h2>
-          <p>
-            <Clock3 size={15} strokeWidth={2} aria-hidden="true" />
-            {formatOrderTime(order.createdAt)}
-          </p>
-        </div>
-        <span className={`admin-order-status admin-order-status--${status.tone}`}>
-          {status.label}
-        </span>
-      </header>
-
-      <div className="admin-order-card__items">
-        {items.map((item, index) => (
-          <div className="admin-order-card__item" key={item.id || `${item.name}-${index}`}>
+          <p className="order-card__folio">Pedido {order.folio || `#${order.id}`}</p>
+          <div className="order-card__meta">
             <span>
-              <strong>{item.quantity || 1}x</strong>
-              {item.name}
+              <UserRound aria-hidden="true" size={16} />
+              {order.clienteNombre}
             </span>
-            {item.subtotal !== undefined ? <strong>{formatCurrency(item.subtotal)}</strong> : null}
+            <span>
+              <Clock aria-hidden="true" size={16} />
+              {formatOrderTime(order.fechaCreacion)}
+            </span>
           </div>
-        ))}
-        {!items.length ? (
-          <p className="admin-order-card__no-items">Sin detalle de platillos en el resumen.</p>
-        ) : null}
+        </div>
+        <span className={`order-card__status order-card__status--${status.tone}`}>{status.label}</span>
       </div>
 
-      {order.notes ? (
-        <p className="admin-order-card__notes">
-          <MessageSquareText size={16} strokeWidth={2} aria-hidden="true" />
-          <span>
-            <strong>Observaciones</strong>
-            {order.notes}
+      <div className="order-card__items">
+        {order.items?.slice(0, 3).map((item) => (
+          <span key={item.id ?? item.nombre}>
+            {item.cantidad} x {item.nombre}
           </span>
-        </p>
-      ) : null}
+        ))}
+        {order.items?.length > 3 ? <span>+{order.items.length - 3} más</span> : null}
+      </div>
 
-      {order.total !== undefined ? (
-        <div className="admin-order-card__total">
-          <span>Total</span>
-          <strong>{formatCurrency(order.total)}</strong>
-        </div>
-      ) : null}
+      {order.notas ? <p className="order-card__notes">Notas: {order.notas}</p> : null}
 
-      {status.key === 'pending' ? (
-        <div className="admin-order-card__actions">
-          <Button
-            onClick={() => onAccept?.(order)}
-            disabled={!actionsAvailable || isUpdating}
-            title={!actionsAvailable ? 'Hay otra actualización en curso' : undefined}
-          >
-            {isUpdating ? 'Actualizando...' : 'Aceptar'}
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => onReject?.(order)}
-            disabled={!actionsAvailable || isUpdating}
-            title={!actionsAvailable ? 'Hay otra actualización en curso' : undefined}
-          >
-            Rechazar
-          </Button>
-        </div>
-      ) : null}
-
-      {status.key === 'accepted' ? (
-        <div className="admin-order-card__actions admin-order-card__actions--single">
-          <Button
-            onClick={() => onComplete?.(order)}
-            disabled={!actionsAvailable || isUpdating}
-            title={!actionsAvailable ? 'Acción no disponible' : undefined}
-          >
-            {isUpdating ? 'Finalizando...' : 'Finalizar pedido'}
+      <div className="order-card__footer">
+        <strong>{formatCurrency(order.total)}</strong>
+        <div className="order-card__actions" aria-label="Acciones del pedido">
+          {isPending ? (
+            <>
+              <Button type="button" size="sm" onClick={() => onAccept(order)}>
+                Aceptar
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => onReject(order)}>
+                Rechazar
+              </Button>
+            </>
+          ) : null}
+          {isAccepted ? (
+            <>
+              <Button type="button" size="sm" onClick={() => onComplete(order)}>
+                Finalizar
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => onCancel(order)}>
+                Cancelar
+              </Button>
+            </>
+          ) : null}
+          <Button type="button" size="sm" variant="ghost" onClick={() => onView(order)}>
+            <Eye aria-hidden="true" size={16} />
+            Ver detalle
           </Button>
         </div>
-      ) : null}
-    </Card>
+      </div>
+    </article>
   );
 }

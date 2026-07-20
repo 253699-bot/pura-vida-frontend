@@ -18,7 +18,7 @@ export function BusinessStatusCard({ status }) {
           <p className="card__meta">{formatDate(normalizedStatus.fecha)}</p>
         </div>
         {!isConfigured ? (
-          <p className="card__meta">Aun no se ha configurado el estado de hoy.</p>
+          <p className="card__meta">Aún no se ha configurado el estado de hoy.</p>
         ) : normalizedStatus.abierto ? (
           <p className="card__meta">Estamos atendiendo con normalidad.</p>
         ) : (

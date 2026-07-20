@@ -36,5 +36,6 @@ export function normalizeApiError(error) {
     message: backendError?.message || error?.message || DEFAULT_ERROR_MESSAGE,
     errors: backendError?.errors || {},
     httpStatus: error?.response?.status || null,
+    code: backendError?.code || null,
   };
 }

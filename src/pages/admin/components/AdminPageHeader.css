@@ -1,0 +1,240 @@
+.admin-home-page__header,
+.statistics-header,
+.admin-orders-page__header,
+.admin-menu-header,
+.manual-sales-page__header,
+.weekly-report-page__header,
+.admin-settings-header,
+.admin-notifications-header {
+  display: flex;
+  min-height: 146px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px clamp(24px, 5vw, 68px);
+  border-bottom: 1px solid #eadfce;
+  background: #fffdf9;
+}
+
+.admin-home-page__header > div:first-child,
+.statistics-header > div:first-child,
+.admin-orders-page__header > div:first-child,
+.admin-menu-header > div:first-child,
+.manual-sales-page__header > div:first-child,
+.weekly-report-page__header > div:first-child,
+.admin-settings-header > div:first-child,
+.admin-notifications-header > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.admin-home-page__header p,
+.statistics-header p,
+.admin-orders-page__header p,
+.admin-menu-header p,
+.manual-sales-page__header p,
+.weekly-report-page__header p,
+.admin-settings-header p,
+.admin-notifications-header p {
+  margin: 0;
+  color: #a65f1a;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-home-page__header h1,
+.statistics-header h1,
+.admin-orders-page__header h1,
+.admin-menu-header h1,
+.manual-sales-page__header h1,
+.weekly-report-page__header h1,
+.admin-settings-header h1,
+.admin-notifications-header h1 {
+  margin: 0;
+  color: #000000;
+  font-family: "Times New Roman", Times, serif;
+  font-size: clamp(1.8rem, 3vw, 2.55rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-home-page__header div > span,
+.statistics-header div > span,
+.admin-orders-page__header div > span,
+.admin-menu-header div > span,
+.manual-sales-page__header div > span,
+.weekly-report-page__header div > span,
+.admin-settings-header div > span,
+.admin-notifications-header div > span {
+  display: block;
+  margin-top: 2px;
+  color: #776d64;
+  line-height: var(--line-height-normal);
+}
+
+.admin-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-header-actions a {
+  position: relative;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid #eadfce;
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-4);
+  color: #776d64;
+  background: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.admin-header-actions a:hover,
+.admin-header-actions a:focus-visible {
+  border-color: #b8d8c4;
+  color: #267449;
+  background: #e9f5ee;
+  outline: none;
+}
+.admin-header-actions__link--unread {
+  border-color: #e7b8a4;
+  color: #8f3f22;
+  background: #fff7f1;
+}
+
+.admin-header-actions__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fffdf9;
+  border-radius: var(--radius-full);
+  padding: 0 5px;
+  color: #fff;
+  background: #c74424;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .admin-home-page__header,
+  .statistics-header,
+  .admin-orders-page__header,
+  .admin-menu-header,
+  .manual-sales-page__header,
+  .weekly-report-page__header,
+  .admin-settings-header,
+  .admin-notifications-header {
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: auto;
+    padding: 22px 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .admin-header-actions a {
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-header-actions a span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .admin-header-actions a {
+    flex: 0 0 44px;
+    width: 44px;
+    padding: 0;
+  }
+}
+
+h1.admin-page-header__title {
+  margin: 0;
+  color: #000000;
+  font-family: "Times New Roman", Times, serif;
+  font-size: clamp(1.8rem, 3vw, 2.55rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+header.admin-orders-page__header {
+  display: flex;
+  min-height: 146px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  box-sizing: border-box;
+  padding: 28px clamp(24px, 5vw, 68px);
+  border-bottom: 1px solid #eadfce;
+  background: #fffdf9;
+}
+
+header.admin-orders-page__header > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+header.admin-orders-page__header h1.admin-page-header__title {
+  margin: 0;
+  color: #000000;
+  font-family: "Times New Roman", Times, serif;
+  font-size: clamp(1.8rem, 3vw, 2.55rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+header.admin-orders-page__header .admin-orders-page__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  header.admin-orders-page__header {
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: auto;
+    padding: 22px 18px;
+  }
+
+  header.admin-orders-page__header .admin-orders-page__actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+}

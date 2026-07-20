@@ -57,10 +57,13 @@ export default function App() {
     '/admin/gestion-dia',
     '/admin/menu',
     '/admin/pedidos',
+    '/admin/pedidos/history',
     '/admin/status',
     '/admin/statistics',
     '/admin/sales/manual',
     '/admin/reports/weekly',
+    '/admin/notificaciones',
+    '/admin/configuracion',
   ].includes(location.pathname);
 
   return (

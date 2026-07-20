@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     const authData = await loginUser(credentials);
 
     if (!authData?.token || !authData?.user) {
-      throw new Error('La respuesta de inicio de sesion no incluye una sesion valida.');
+      throw new Error('La respuesta de inicio de sesión no incluye una sesión válida.');
     }
 
     saveToken(authData.token);

@@ -1,40 +1,48 @@
-export function normalizeMenuItem(item) {
-  if (!item) {
-    return null;
-  }
+import { resolveApiAssetUrl } from '../../shared/api/assets.js';
+
+export function normalizeMenuItem(item = {}) {
+  const dish = item.platillo ?? item.dish ?? {};
+  const rawImageUrl = dish.imagenUrl ?? dish.imagen_url ?? dish.imageUrl ?? item.imagenUrl ?? item.imageUrl ?? null;
 
   return {
-    id: item.id ?? null,
-    platilloId: item.platilloId ?? null,
-    nombre: item.nombre ?? 'Platillo sin nombre',
-    descripcion: item.descripcion ?? '',
-    tipoPlatillo: item.tipoPlatillo ?? 'general',
-    precio: item.precio ?? 0,
-    disponible: Boolean(item.disponible),
+    id: item.id ?? item.menuItemId ?? item.menu_item_id,
+    platilloId: item.platilloId ?? item.dishId ?? dish.id,
+    nombre: dish.nombre ?? item.nombre ?? item.name,
+    descripcion: dish.descripcion ?? item.descripcion ?? item.description ?? '',
+    precio: Number(dish.precio ?? item.precio ?? item.price ?? 0),
+    categoria: dish.categoria ?? item.categoria ?? item.category ?? '',
+    tipoPlatillo: dish.tipoPlatillo ?? item.tipoPlatillo ?? item.tipo_platillo ?? item.type ?? '',
+    publicado: item.publicado ?? item.published ?? true,
+    imagenUrl: resolveApiAssetUrl(rawImageUrl),
+    disponible: Boolean(item.disponible ?? item.available ?? true)
   };
 }
 
-export function normalizeDish(dish) {
-  if (!dish) {
-    return null;
-  }
-
+export function normalizeTodayMenu(menu = {}) {
+  const items = menu.items ?? menu.platillos ?? menu.menuItems ?? [];
   return {
-    id: dish.id ?? null,
-    nombre: dish.nombre ?? 'Platillo sin nombre',
-    descripcion: dish.descripcion ?? '',
-    tipoPlatillo: dish.tipoPlatillo ?? 'platillo_fuerte',
-    precioBase: Number(dish.precioBase || 0),
-    activo: Boolean(dish.activo),
-    creadoEn: dish.creadoEn ?? null,
-    actualizadoEn: dish.actualizadoEn ?? null,
+    id: menu.id ?? menu.menuId ?? null,
+    fecha: menu.fecha ?? menu.date ?? null,
+    configured: Boolean(menu.configured ?? menu.configurado ?? menu.id ?? items.length),
+    publicado: Boolean(menu.publicado ?? menu.published ?? false),
+    items: Array.isArray(items) ? items.map(normalizeMenuItem) : []
   };
 }
 
-export function normalizeTodayMenu(menu) {
+export function normalizeDish(dish = {}) {
+  const rawImageUrl = dish.imagenUrl ?? dish.imagen_url ?? dish.imageUrl ?? dish.fotoUrl ?? null;
+
   return {
-    configured: Boolean(menu?.configured),
-    fecha: menu?.fecha ?? null,
-    items: Array.isArray(menu?.items) ? menu.items.map(normalizeMenuItem).filter(Boolean) : [],
+    id: dish.id ?? dish.platilloId ?? dish.Id_platillo,
+    nombre: dish.nombre ?? dish.name ?? '',
+    descripcion: dish.descripcion ?? dish.description ?? '',
+    precio: Number(dish.precio ?? dish.precioBase ?? dish.price ?? 0),
+    precioBase: Number(dish.precioBase ?? dish.precio ?? dish.price ?? 0),
+    tipoPlatillo: dish.tipoPlatillo ?? dish.tipo_platillo ?? dish.type ?? '',
+    categoria: dish.categoria ?? dish.category ?? '',
+    activo: Boolean(dish.activo ?? dish.active ?? true),
+    imagenUrl: resolveApiAssetUrl(rawImageUrl),
+    creadoEn: dish.creadoEn ?? dish.createdAt ?? null,
+    actualizadoEn: dish.actualizadoEn ?? dish.updatedAt ?? null
   };
 }

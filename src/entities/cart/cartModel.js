@@ -1,3 +1,5 @@
+import { resolveApiAssetUrl } from '../../shared/api/assets.js';
+
 export function normalizeCartItem(item) {
   if (!item) {
     return null;
@@ -10,6 +12,7 @@ export function normalizeCartItem(item) {
     cantidad: Number(item.cantidad || 0),
     precioUnitario: Number(item.precioUnitario || 0),
     subtotal: Number(item.subtotal || 0),
+    imagenUrl: resolveApiAssetUrl(item.imagenUrl),
   };
 }
 

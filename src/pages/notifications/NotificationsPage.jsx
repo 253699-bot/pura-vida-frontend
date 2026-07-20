@@ -140,7 +140,7 @@ export function NotificationsPage() {
           <Bell size={42} strokeWidth={1.8} aria-hidden="true" />
           <EmptyState
             title="No tienes notificaciones"
-            message="Las respuestas y cambios de estado de tus pedidos aparecerán aquí."
+            message="eas respuestas y cambios de estado de tus pedidos aparecerán aquí."
           />
           <Link className="button button--primary" to="/menu">
             Ver menú del día

@@ -1,10 +1,12 @@
 import {
   BarChart3,
+  Bell,
   ClipboardList,
   FileText,
   LayoutDashboard,
   Menu as MenuIcon,
   ShoppingBag,
+  Settings,
   Store,
   WalletCards,
 } from 'lucide-react';
@@ -22,6 +24,8 @@ const NAV_ITEMS = [
   { icon: WalletCards, label: 'Ventas manuales', to: '/admin/sales/manual' },
   { icon: FileText, label: 'Reporte semanal', to: '/admin/reports/weekly' },
   { icon: Store, label: 'Estado del negocio', to: '/admin/status' },
+  { icon: Bell, label: 'Notificaciones', to: '/admin/notificaciones' },
+  { icon: Settings, label: 'Configuración', to: '/admin/configuracion' },
 ];
 
 export function AdminWorkspaceSidebar({ activePath }) {

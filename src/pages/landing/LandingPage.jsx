@@ -13,6 +13,7 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { getTodayBusinessStatus } from '../../entities/business/businessApi.js';
+import { LogoutConfirmationDialog } from '../../features/auth/logout/LogoutConfirmationDialog.jsx';
 import { getCart } from '../../entities/cart/cartApi.js';
 import { getMyNotifications } from '../../entities/notifications/notificationApi.js';
 import {
@@ -20,8 +21,9 @@ import {
   NOTIFICATIONS_UPDATED_EVENT,
 } from '../../shared/constants/events.js';
 import { useAuth } from '../../shared/hooks/useAuth.js';
-import brandLogo from '../../shared/assets/brand/pura-vida-logo.svg';
 import heroFood from '../../shared/assets/hero-food.jpg';
+import { useBusinessConfiguration } from '../../shared/hooks/useBusinessConfiguration.js';
+import { BrandLogo } from '../../shared/ui/BrandLogo.jsx';
 import { AboutSection } from './components/AboutSection.jsx';
 import { LocationSection } from './components/LocationSection.jsx';
 import './LandingPage.css';
@@ -58,12 +60,15 @@ function getStatusView({ status, hasError, isLoading }) {
 
 export function LandingHeader() {
   const { isAuthenticated, isEncargada, logout, user } = useAuth();
+  const { configuration } = useBusinessConfiguration();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isConfirmingLogout, setIsConfirmingLogout] = useState(false);
   const [cartCount, setCartCount] = useState(null);
   const [unreadCount, setUnreadCount] = useState(null);
   const { hash, pathname } = useLocation();
   const navigate = useNavigate();
   const initials = useMemo(() => getInitials(user), [user]);
+  const businessName = configuration?.nombreFonda || 'PuraVida';
   const accountRef = useRef(null);
   const cartRequestRef = useRef(0);
   const notificationsRequestRef = useRef(0);
@@ -162,17 +167,22 @@ export function LandingHeader() {
     };
   }, []);
 
+  function requestLogout() {
+    setIsMenuOpen(false);
+    setIsConfirmingLogout(true);
+  }
+
   function handleLogout() {
     logout();
-    setIsMenuOpen(false);
+    setIsConfirmingLogout(false);
     navigate('/', { replace: true });
   }
 
   return (
     <header className="landing-header">
       <div className="landing-header__inner">
-        <Link to="/" className="landing-brand" aria-label="PuraVida inicio">
-          <img className="landing-brand__logo" src={brandLogo} alt="PuraVida" />
+        <Link to="/" className="landing-brand" aria-label={`${businessName} inicio`}>
+          <BrandLogo className="landing-brand__logo" />
         </Link>
 
         <nav className="landing-nav" aria-label="Navegación principal">
@@ -188,21 +198,22 @@ export function LandingHeader() {
             to="/menu"
             aria-current={pathname === '/menu' ? 'page' : undefined}
           >
-            Menú del día
+            Menú
           </Link>
+<Link
+            className={`landing-nav__link ${hash === '#nosotros' ? 'landing-nav__link--active' : ''}`.trim()}
+            to="/#nosotros"
+            aria-current={pathname === '/' && hash === '#nosotros' ? 'location' : undefined}
+          >
+            Nosotros
+          </Link>
+
           <Link
             className={`landing-nav__link ${hash === '#ubicacion' ? 'landing-nav__link--active' : ''}`.trim()}
             to="/#ubicacion"
             aria-current={pathname === '/' && hash === '#ubicacion' ? 'location' : undefined}
           >
             Ubicación
-          </Link>
-          <Link
-            className={`landing-nav__link ${hash === '#nosotros' ? 'landing-nav__link--active' : ''}`.trim()}
-            to="/#nosotros"
-            aria-current={pathname === '/' && hash === '#nosotros' ? 'location' : undefined}
-          >
-            Nosotros
           </Link>
         </nav>
 
@@ -269,7 +280,7 @@ export function LandingHeader() {
                 {isMenuOpen ? (
                   <div className="landing-account__menu" id="landing-account-menu">
                     <div className="landing-account__identity">
-                      <strong>{user?.nombre || 'Usuario PuraVida'}</strong>
+                      <strong>{user?.nombre || `Usuario ${businessName}`}</strong>
                       <span>{user?.correo}</span>
                     </div>
                     <Link
@@ -307,7 +318,7 @@ export function LandingHeader() {
                     <button
                       type="button"
                       className="landing-account__item landing-account__item--danger"
-                      onClick={handleLogout}
+                      onClick={requestLogout}
                     >
                       <LogOut size={18} strokeWidth={2} aria-hidden="true" />
                       <span>Cerrar sesión</span>
@@ -328,6 +339,11 @@ export function LandingHeader() {
           )}
         </div>
       </div>
+      <LogoutConfirmationDialog
+        open={isConfirmingLogout}
+        onCancel={() => setIsConfirmingLogout(false)}
+        onConfirm={handleLogout}
+      />
     </header>
   );
 }
@@ -337,6 +353,8 @@ export function LandingPage() {
   const [hasStatusError, setHasStatusError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { hash } = useLocation();
+  const { configuration } = useBusinessConfiguration();
+  const businessName = configuration?.nombreFonda || 'PuraVida';
   const statusView = getStatusView({ status, hasError: hasStatusError, isLoading });
 
   useEffect(() => {
@@ -385,7 +403,7 @@ export function LandingPage() {
     <div className="landing-page">
       <LandingHeader />
       <main>
-        <section className="landing-hero" aria-label="Presentación PuraVida">
+        <section className="landing-hero" aria-label={`Presentación ${businessName}`}>
           <img className="landing-hero__image" src={heroFood} alt="Platillos servidos en una mesa" />
           <div className="landing-hero__overlay" />
           <div className="landing-hero__content">
@@ -400,26 +418,26 @@ export function LandingPage() {
           </div>
         </section>
 
-        <AboutSection />
-        <LocationSection />
+        <AboutSection businessName={businessName} />
+        <LocationSection businessName={businessName} />
       </main>
 
       <footer className="landing-footer">
         <div className="landing-footer__inner">
           <section>
-            <h2>PuraVida</h2>
+            <h2>{businessName}</h2>
             <p>Sabor local y fresco.</p>
-            <p>© 2024 PuraVida. Sabor local y fresco.</p>
+            <p>(c) 2024 {businessName}. Sabor local y fresco.</p>
           </section>
           <section>
             <h2>Contacto</h2>
             <p className="landing-footer__line">
               <MapPin size={18} strokeWidth={2} aria-hidden="true" />
-              Av. Primera Nte. Ote. 229, Suchiapa
+              {configuration?.direccion || 'Av. Primera Nte. Ote. 229, Suchiapa'}
             </p>
             <p className="landing-footer__line">
               <Clock size={18} strokeWidth={2} aria-hidden="true" />
-              Lun - Vie: 8:00 AM - 6:00 PM
+              {configuration?.horarios || 'Lun - Vie: 8:00 AM - 6:00 PM'}
             </p>
           </section>
           <section>
@@ -428,7 +446,7 @@ export function LandingPage() {
               <MapPin size={18} strokeWidth={2} aria-hidden="true" />
               Ubicación
             </Link>
-            <Link className="landing-footer__line" to="/#ubicacion">
+            <Link className="landing-footer__line" to="/#horarios">
               <Clock size={18} strokeWidth={2} aria-hidden="true" />
               Horarios
             </Link>

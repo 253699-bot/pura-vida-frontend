@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Clock3, Utensils } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { getMyOrder } from '../../entities/orders/orderApi.js';
+import { getOrderRejectionReason } from '../../entities/orders/orderModel.js';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
 import { ClientPageLayout } from '../../shared/layouts/ClientPageLayout.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
@@ -15,6 +16,21 @@ import {
 import { OrderStatusBadge } from './components/OrderStatusBadge.jsx';
 import './OrderDetailPage.css';
 
+
+function OrderItemMedia({ item }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(item.imagenUrl) && !imageFailed;
+
+  return (
+    <span className={`order-detail__item-media ${hasImage ? 'order-detail__item-media--image' : ''}`.trim()} aria-hidden="true">
+      {hasImage ? (
+        <img src={item.imagenUrl} alt="" onError={() => setImageFailed(true)} />
+      ) : (
+        <Utensils size={24} strokeWidth={1.8} />
+      )}
+    </span>
+  );
+}
 const STATUS_MESSAGES = {
   pendiente: {
     icon: Clock3,
@@ -42,14 +58,22 @@ const STATUS_MESSAGES = {
   },
 };
 
+
+function shouldShowEstimatedWait(order) {
+  return ['aceptado', 'finalizado'].includes(order.estado)
+    && typeof order.tiempoEsperaEstimado === 'string'
+    && order.tiempoEsperaEstimado.trim().length > 0;
+}
 function OrderResponseMessage({ order }) {
+  const rejectionReason = getOrderRejectionReason(order);
+
   if (order.estado === 'rechazado') {
     return (
       <section className="order-response order-response--rejected">
         <AlertCircle size={22} aria-hidden="true" />
         <div>
           <strong>Motivo de rechazo</strong>
-          <span>{order.motivoRechazo || 'La fonda no proporcionó un motivo.'}</span>
+          <span>{rejectionReason || 'La fonda no proporcionó un motivo.'}</span>
         </div>
       </section>
     );
@@ -69,6 +93,11 @@ function OrderResponseMessage({ order }) {
       <div>
         <strong>{response.title}</strong>
         <span>{response.message}</span>
+        {shouldShowEstimatedWait(order) ? (
+          <span className="order-response__estimate">
+            Tiempo estimado para recoger: <strong>{order.tiempoEsperaEstimado.trim()}</strong>
+          </span>
+        ) : null}
         {order.respondidoEn ? <small>Respuesta: {formatDateTime(order.respondidoEn)}</small> : null}
       </div>
     </section>
@@ -146,13 +175,11 @@ export function OrderDetailPage() {
               <div className="order-detail__item-list">
                 {order.items.map((item) => (
                   <article className="order-detail__item" key={item.id ?? item.platilloId}>
-                    <span aria-hidden="true">
-                      <Utensils size={24} strokeWidth={1.8} />
-                    </span>
+                    <OrderItemMedia item={item} />
                     <div>
                       <strong>{item.nombre}</strong>
                       <small>
-                        {item.cantidad} × {formatCurrency(item.precioUnitario)}
+                        {item.cantidad} x {formatCurrency(item.precioUnitario)}
                       </small>
                     </div>
                     <strong>{formatCurrency(item.subtotal)}</strong>

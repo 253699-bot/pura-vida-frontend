@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8080/api/v1';
+const DEFAULT_API_BASE_URL = '/api/v1';
 
 function normalizeBaseUrl(value) {
   return value?.trim().replace(/\/+$/, '') || DEFAULT_API_BASE_URL;

@@ -6,6 +6,8 @@ import { AdminStatisticsPage } from '../pages/admin/AdminStatisticsPage.jsx';
 import { AdminWeeklyReportPage } from '../pages/admin/AdminWeeklyReportPage.jsx';
 import { DailyManagementPage } from '../pages/admin/DailyManagementPage.jsx';
 import { AdminMenuPage } from '../pages/admin/AdminMenuPage.jsx';
+import { AdminNotificationsPage } from '../pages/admin/AdminNotificationsPage.jsx';
+import { AdminSettingsPage } from '../pages/admin/AdminSettingsPage.jsx';
 import { BusinessStatusPage } from '../pages/admin/BusinessStatusPage.jsx';
 import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
@@ -94,6 +96,14 @@ export function AppRouter() {
         }
       />
       <Route
+        path="/admin/pedidos/history"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminOrdersPage history />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/status"
         element={
           <ProtectedRoute roles={encargadaOnly}>
@@ -130,6 +140,22 @@ export function AppRouter() {
         element={
           <ProtectedRoute roles={encargadaOnly}>
             <AdminWeeklyReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/notificaciones"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminNotificationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/configuracion"
+        element={
+          <ProtectedRoute roles={encargadaOnly}>
+            <AdminSettingsPage />
           </ProtectedRoute>
         }
       />

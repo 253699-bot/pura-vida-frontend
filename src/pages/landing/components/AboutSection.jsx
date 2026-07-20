@@ -20,13 +20,13 @@ const VALUES = [
   },
 ];
 
-export function AboutSection() {
+export function AboutSection({ businessName = 'PuraVida' }) {
   return (
     <section className="landing-section landing-about" id="nosotros" aria-labelledby="about-title">
       <header className="landing-section__header">
         <h2 id="about-title">Nosotros</h2>
         <p>
-          En fonda PuraVida creamos platillos caseros con ingredientes locales y frescos, para
+          En fonda {businessName} creamos platillos caseros con ingredientes locales y frescos, para
           brindarte el sabor auténtico de nuestra tierra.
         </p>
       </header>

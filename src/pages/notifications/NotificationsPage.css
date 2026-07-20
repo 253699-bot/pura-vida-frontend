@@ -169,3 +169,8 @@
     justify-content: center;
   }
 }
+
+.notification-type--cancelled {
+  color: #5f6b78;
+  background: #edf0f2;
+}

@@ -1,104 +1,151 @@
+import { resolveApiAssetUrl } from '../../shared/api/assets.js';
+
 export const ORDER_STATUS_DETAILS = {
   pendiente: { label: 'Pendiente', tone: 'pending' },
   aceptado: { label: 'Aceptado', tone: 'accepted' },
   finalizado: { label: 'Finalizado', tone: 'completed' },
   rechazado: { label: 'Rechazado', tone: 'rejected' },
-  cancelado: { label: 'Cancelado', tone: 'cancelled' },
+  cancelado: { label: 'Cancelado', tone: 'cancelled' }
 };
 
-function normalizeOrderStatus(value) {
-  return String(value || '').toLowerCase();
-}
+export const ORDER_REJECTION_CATEGORIES = [
+  { value: 'platillo_agotado', label: 'Platillo agotado' },
+  { value: 'fonda_cerrada', label: 'Fonda cerrada' },
+  { value: 'pedido_fuera_de_horario', label: 'Pedido fuera de horario' },
+  { value: 'cantidad_no_disponible', label: 'Cantidad no disponible' },
+  { value: 'otro', label: 'Otro' }
+];
 
-export function normalizeOrderItem(item) {
-  if (!item) {
-    return null;
+const ORDER_REJECTION_CATEGORY_LABELS = ORDER_REJECTION_CATEGORIES.reduce((labels, category) => {
+  labels[category.value] = category.label;
+  return labels;
+}, {});
+
+const ORDER_STATUS = {
+  PENDIENTE: 'pendiente',
+  ACEPTADO: 'aceptado',
+  FINALIZADO: 'finalizado',
+  RECHAZADO: 'rechazado',
+  CANCELADO: 'cancelado'
+};
+
+function normalizeStatus(status) {
+  if (!status) {
+    return ORDER_STATUS.PENDIENTE;
   }
 
+  const normalized = String(status).toLowerCase();
+  const aliases = {
+    pending: ORDER_STATUS.PENDIENTE,
+    accepted: ORDER_STATUS.ACEPTADO,
+    completed: ORDER_STATUS.FINALIZADO,
+    rejected: ORDER_STATUS.RECHAZADO,
+    cancelled: ORDER_STATUS.CANCELADO,
+    canceled: ORDER_STATUS.CANCELADO
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
+export function normalizeOrderItem(item = {}) {
+  const rawImageUrl = item.imagenUrl ?? item.imageUrl ?? item.platilloImagenUrl ?? item.dishImageUrl ?? null;
+
   return {
-    id: item.id ?? null,
+    id: item.id ?? item.itemId ?? item.detalleId,
     menuItemId: item.menuItemId ?? null,
-    platilloId: item.platilloId ?? null,
-    nombre: item.nombre ?? 'Platillo sin nombre',
-    cantidad: Number(item.cantidad || 0),
-    precioUnitario: Number(item.precioUnitario || 0),
-    subtotal: Number(item.subtotal || 0),
+    platilloId: item.platilloId ?? item.dishId ?? null,
+    nombre: item.nombre ?? item.name ?? item.platilloNombre ?? item.dishName ?? 'Platillo sin nombre',
+    cantidad: Number(item.cantidad ?? item.quantity ?? 0),
+    precioUnitario: Number(item.precioUnitario ?? item.unitPrice ?? item.precio ?? 0),
+    subtotal: Number(item.subtotal ?? item.total ?? 0),
+    imagenUrl: resolveApiAssetUrl(rawImageUrl)
   };
 }
 
-export function normalizeOrder(order) {
-  if (!order) {
-    return null;
-  }
-
+export function normalizeOrderSummary(order = {}) {
   return {
-    id: order.id ?? null,
+    id: order.id ?? order.orderId,
     clienteId: order.clienteId ?? null,
-    clienteNombre: order.clienteNombre ?? '',
-    estado: normalizeOrderStatus(order.estado),
+    clienteNombre: order.clienteNombre ?? order.customerName ?? order.nombreCliente ?? '',
+    estado: normalizeStatus(order.estado ?? order.status),
     fecha: order.fecha ?? null,
     hora: order.hora ?? null,
-    total: Number(order.total || 0),
-    notas: order.notas ?? '',
-    motivoRechazo: order.motivoRechazo ?? '',
-    respondidoPor: order.respondidoPor ?? null,
-    respondidoEn: order.respondidoEn ?? null,
-    items: Array.isArray(order.items)
-      ? order.items.map(normalizeOrderItem).filter(Boolean)
-      : [],
+    total: Number(order.total ?? 0),
+    fechaCreacion: order.fechaCreacion ?? order.createdAt ?? order.fecha ?? null,
+    tiempoEsperaEstimado: order.tiempoEsperaEstimado ?? order.estimatedWaitMinutes ?? null,
+    motivoRechazo: order.motivoRechazo ?? order.rejectionReason ?? '',
+    categoriaRechazo: order.categoriaRechazo ?? order.rejectionCategory ?? '',
+    articulos: Number(order.articulos ?? order.itemCount ?? order.totalItems ?? 0)
   };
 }
 
-export function normalizeOrderSummary(order) {
-  const normalized = normalizeOrder(order);
-
-  if (!normalized) {
-    return null;
-  }
-
-  const { items, ...summary } = normalized;
-  return summary;
-}
-
-function combineOrderDateTime(fecha, hora) {
-  if (fecha && hora) {
-    return `${fecha}T${hora}`;
-  }
-
-  return fecha || hora || null;
-}
-
-export function normalizeAdminOrder(order) {
-  if (!order) {
-    return null;
-  }
-
-  const backendOrder = {
-    ...order,
-    id: order.id ?? order.idPedido ?? null,
-    estado: order.estado ?? order.status,
-  };
-  const normalized = normalizeOrder(backendOrder);
+export function normalizeOrder(order = {}) {
+  const items = order.items ?? order.detalles ?? order.articulos ?? [];
 
   return {
-    ...order,
-    id: normalized.id,
-    status: normalized.estado,
-    customerName: normalized.clienteNombre || order.customerName || '',
-    createdAt: order.createdAt || combineOrderDateTime(normalized.fecha, normalized.hora),
-    total: normalized.total,
-    source: order.origen ?? order.source ?? null,
-    notes: normalized.notas,
-    rejectionReason: normalized.motivoRechazo,
-    items: normalized.items.map((item) => ({
-      ...item,
-      name: item.nombre,
-      quantity: item.cantidad,
-    })),
-    raw: order,
+    ...normalizeOrderSummary(order),
+    notas: order.notas ?? order.notes ?? '',
+    motivoRechazo: order.motivoRechazo ?? order.rejectionReason ?? '',
+    categoriaRechazo: order.categoriaRechazo ?? order.rejectionCategory ?? '',
+    respondidoPor: order.respondidoPor ?? null,
+    respondidoEn: order.respondidoEn ?? null,
+    fechaAceptacion: order.fechaAceptacion ?? order.acceptedAt ?? null,
+    fechaFinalizacion: order.fechaFinalizacion ?? order.completedAt ?? null,
+    items: Array.isArray(items) ? items.map(normalizeOrderItem).filter(Boolean) : []
+  };
+}
+
+function combineOrderDateTime(order = {}) {
+  const rawDate = order.fechaCreacion ?? order.createdAt ?? order.fecha ?? order.date ?? null;
+  const rawTime = order.horaCreacion ?? order.createdTime ?? order.hora ?? order.time ?? null;
+  if (!rawDate || String(rawDate).includes('T') || !rawTime) {
+    return rawDate;
+  }
+  return `${rawDate}T${rawTime}`;
+}
+
+export function normalizeAdminOrder(order = {}) {
+  const items = order.items ?? order.detalles ?? order.articulos ?? [];
+
+  return {
+    id: order.id ?? order.orderId,
+    folio: order.folio ?? order.codigo ?? `#${order.id ?? order.orderId ?? ''}`,
+    clienteNombre: order.clienteNombre ?? order.customerName ?? order.nombreCliente ?? 'Cliente',
+    clienteTelefono: order.clienteTelefono ?? order.customerPhone ?? order.telefonoCliente ?? '',
+    estado: normalizeStatus(order.estado ?? order.status),
+    total: Number(order.total ?? 0),
+    fechaCreacion: combineOrderDateTime(order),
+    tiempoEsperaEstimado: order.tiempoEsperaEstimado ?? order.estimatedWaitMinutes ?? null,
+    notas: order.notas ?? order.notes ?? '',
+    motivoRechazo: order.motivoRechazo ?? order.rejectionReason ?? '',
+    categoriaRechazo: order.categoriaRechazo ?? order.rejectionCategory ?? '',
+    motivoCancelacion: order.motivoCancelacion ?? order.cancellationReason ?? '',
+    fechaAceptacion: order.fechaAceptacion ?? order.acceptedAt ?? null,
+    fechaFinalizacion: order.fechaFinalizacion ?? order.completedAt ?? null,
+    items: Array.isArray(items) ? items.map(normalizeOrderItem).filter(Boolean) : []
   };
 }
 
 export function getOrderStatusDetails(status) {
-  return ORDER_STATUS_DETAILS[status] || { label: 'Estado no disponible', tone: 'neutral' };
+  return ORDER_STATUS_DETAILS[normalizeStatus(status)] || { label: 'Estado no disponible', tone: 'neutral' };
+}
+
+export function getOrderRejectionCategoryLabel(category) {
+  return ORDER_REJECTION_CATEGORY_LABELS[category] ?? '';
+}
+
+export function getOrderRejectionReason(order = {}) {
+  const category = order.categoriaRechazo ?? order.rejectionCategory ?? '';
+  const reason = String(order.motivoRechazo ?? order.rejectionReason ?? '').trim();
+
+  if (category === 'otro') {
+    return reason;
+  }
+
+  const categoryLabel = getOrderRejectionCategoryLabel(category);
+  if (categoryLabel && reason) {
+    return `${categoryLabel}: ${reason}`;
+  }
+
+  return categoryLabel || reason;
 }

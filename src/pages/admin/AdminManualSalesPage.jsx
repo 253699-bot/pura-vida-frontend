@@ -1,47 +1,32 @@
-import { Check, ClipboardList, Info, WalletCards, X } from 'lucide-react';
-import { useState } from 'react';
+import { Check, ClipboardList, Info, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getTodayMenu } from '../../entities/menu/menuApi.js';
 import { createManualSale } from '../../entities/sales/salesApi.js';
 import { getApiErrors, getApiMessage } from '../../shared/api/apiResponse.js';
 import { Button } from '../../shared/ui/Button.jsx';
+import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
-import { Input } from '../../shared/ui/Input.jsx';
+import { Loading } from '../../shared/ui/Loading.jsx';
+import { formatCurrency } from '../../shared/utils/currency.js';
+import { AdminHeaderActions } from './components/AdminHeaderActions.jsx';
 import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
+
 import './AdminManualSalesPage.css';
+import './components/AdminPageHeader.css';
 
-const INITIAL_FORM = {
-  total: '',
-  observaciones: '',
-};
-
-const currencyFormatter = new Intl.NumberFormat('es-MX', {
-  style: 'currency',
-  currency: 'MXN',
-  minimumFractionDigits: 2,
-});
-
-function validateForm(form) {
-  const errors = {};
-  const total = form.total.trim();
-
-  if (!total) {
-    errors.total = 'Ingresa el total de la venta.';
-  } else if (!/^\d{1,8}(\.\d{1,2})?$/.test(total) || Number(total) <= 0) {
-    errors.total = 'Usa un monto mayor a cero, con máximo dos decimales.';
+function createIdempotencyKey() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
   }
 
-  return errors;
+  return `manual-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function SaleSuccessDialog({ sale, onClose }) {
   return (
     <div className="manual-sale-success" role="presentation">
-      <section
-        className="manual-sale-success__dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="manual-sale-success-title"
-      >
+      <section className="manual-sale-success__dialog" role="dialog" aria-modal="true" aria-labelledby="manual-sale-success-title">
         <button className="manual-sale-success__close" type="button" onClick={onClose} aria-label="Cerrar">
           <X size={20} />
         </button>
@@ -50,32 +35,25 @@ function SaleSuccessDialog({ sale, onClose }) {
         </span>
         <p className="manual-sale-success__eyebrow">Registro completado</p>
         <h2 id="manual-sale-success-title">Venta registrada correctamente</h2>
-        <p>La venta manual quedó guardada y ya forma parte de las métricas administrativas.</p>
+        <p>La venta manual quedó guardada con partidas del menú publicado.</p>
 
         <dl className="manual-sale-success__summary">
-          {sale?.id ? (
-            <div>
-              <dt>Folio</dt>
-              <dd>#{sale.id}</dd>
-            </div>
-          ) : null}
-          <div>
-            <dt>Total</dt>
-            <dd>{currencyFormatter.format(Number(sale?.total || 0))}</dd>
-          </div>
-          {sale?.fecha ? (
-            <div>
-              <dt>Fecha</dt>
-              <dd>{sale.fecha}</dd>
-            </div>
-          ) : null}
+          {sale?.id ? <div><dt>Folio</dt><dd>#{sale.id}</dd></div> : null}
+          <div><dt>Total</dt><dd>{formatCurrency(Number(sale?.total || 0))}</dd></div>
+          {sale?.fecha ? <div><dt>Fecha</dt><dd>{sale.fecha}</dd></div> : null}
         </dl>
+
+        {sale?.items?.length ? (
+          <div className="manual-sale-success__items">
+            {sale.items.map((item) => (
+              <span key={item.id || item.menuItemId}>{item.cantidad}x {item.nombre}</span>
+            ))}
+          </div>
+        ) : null}
 
         <div className="manual-sale-success__actions">
           <Button onClick={onClose}>Registrar otra venta</Button>
-          <Link className="button button--secondary button--md" to="/admin/reports/weekly">
-            Ver reporte semanal
-          </Link>
+          <Link className="button button--secondary button--md" to="/admin/reports/weekly">Ver reportes</Link>
         </div>
       </section>
     </div>
@@ -83,41 +61,77 @@ function SaleSuccessDialog({ sale, onClose }) {
 }
 
 export function AdminManualSalesPage() {
-  const [form, setForm] = useState(INITIAL_FORM);
+  const [menu, setMenu] = useState(null);
+  const [quantities, setQuantities] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdSale, setCreatedSale] = useState(null);
 
-  const totalPreview = Number(form.total) > 0 ? Number(form.total) : 0;
+  useEffect(() => {
+    let isMounted = true;
 
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-    setFieldErrors((current) => ({ ...current, [name]: '' }));
+    async function loadMenu() {
+      try {
+        const todayMenu = await getTodayMenu();
+        if (isMounted) setMenu(todayMenu);
+      } catch (requestError) {
+        if (isMounted) setError(getApiMessage(requestError, 'No se pudo cargar el menú publicado.'));
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadMenu();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const availableItems = useMemo(
+    () => (menu?.items || []).filter((item) => item.id && item.disponible),
+    [menu],
+  );
+
+  const selectedItems = useMemo(
+    () => availableItems
+      .map((item) => ({ ...item, cantidad: Number(quantities[item.id] || 0) }))
+      .filter((item) => item.cantidad > 0),
+    [availableItems, quantities],
+  );
+
+  const totalPreview = selectedItems.reduce((total, item) => total + item.cantidad * Number(item.precio || 0), 0);
+
+  function updateQuantity(itemId, value) {
+    const normalized = value === '' ? '' : Math.max(0, Number(value || 0));
+    setQuantities((current) => ({ ...current, [itemId]: normalized }));
+    setFieldErrors({});
     setError('');
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const validationErrors = validateForm(form);
 
-    if (Object.keys(validationErrors).length > 0) {
-      setFieldErrors(validationErrors);
+    if (!selectedItems.length) {
+      setFieldErrors({ items: 'Selecciona al menos un platillo con cantidad positiva.' });
       return;
     }
 
     setIsSubmitting(true);
     setError('');
+    setFieldErrors({});
 
     try {
-      const sale = await createManualSale({
-        total: form.total.trim(),
-        observaciones: form.observaciones.trim() || null,
-      });
+      const sale = await createManualSale(
+        {
+          items: selectedItems.map((item) => ({ menuItemId: item.id, cantidad: item.cantidad })),
+        },
+        createIdempotencyKey(),
+      );
       setCreatedSale(sale);
-      setForm(INITIAL_FORM);
-      setFieldErrors({});
+      setQuantities({});
     } catch (requestError) {
       setFieldErrors(getApiErrors(requestError));
       setError(getApiMessage(requestError, 'No fue posible registrar la venta manual.'));
@@ -132,80 +146,71 @@ export function AdminManualSalesPage() {
 
       <main className="manual-sales-page">
         <header className="manual-sales-page__header">
-          <span className="manual-sales-page__heading-icon" aria-hidden="true">
-            <WalletCards size={28} />
-          </span>
           <div>
             <p>Ventas</p>
-            <h1>Registro de ventas manuales</h1>
-            <span>Captura ventas realizadas fuera de los pedidos de la plataforma.</span>
+            <h1 className="admin-page-header__title">Registro de ventas manuales</h1>
+            <span>Captura ventas de mostrador usando el menú publicado de hoy.</span>
           </div>
+          <AdminHeaderActions />
         </header>
 
         <div className="manual-sales-page__content">
           <div className="manual-sales-page__notice">
             <Info size={21} aria-hidden="true" />
-            <p>
-              Registra el importe total confirmado. El contrato actual de la API no recibe partidas individuales;
-              puedes documentar el contexto en observaciones.
-            </p>
+            <p>El backend calcula el total con precios vigentes del menú y rechaza ítems agotados o no publicados.</p>
           </div>
 
-          <form className="manual-sale-form" onSubmit={handleSubmit} noValidate>
-            <section className="manual-sale-form__card">
-              <div className="manual-sale-form__section-title">
-                <ClipboardList size={22} aria-hidden="true" />
-                <div>
-                  <h2>Datos de la venta</h2>
-                  <p>Los campos marcados son necesarios para guardar el registro.</p>
+          {isLoading ? <Loading label="Cargando menú publicado..." /> : null}
+          <ErrorMessage title="No se pudo guardar" message={error} />
+
+          {!isLoading && !error && !availableItems.length ? (
+            <EmptyState title="No hay ítems vendibles" message="Publica y habilita al menos un platillo en el menú de hoy." />
+          ) : null}
+
+          {!isLoading && availableItems.length ? (
+            <form className="manual-sale-form" onSubmit={handleSubmit} noValidate>
+              <section className="manual-sale-form__card">
+                <div className="manual-sale-form__section-title">
+                  <ClipboardList size={22} aria-hidden="true" />
+                  <div>
+                    <h2>Partidas de la venta</h2>
+                    <p>Indica cantidades para los platillos vendidos en mostrador.</p>
+                  </div>
                 </div>
-              </div>
 
-              <Input
-                id="manual-sale-total"
-                name="total"
-                label="Total de la venta *"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0.00"
-                value={form.total}
-                error={fieldErrors.total}
-                onChange={handleChange}
-                disabled={isSubmitting}
-              />
+                <div className="manual-sale-items">
+                  {availableItems.map((item) => (
+                    <label className="manual-sale-item" key={item.id}>
+                      <span>
+                        <strong>{item.nombre}</strong>
+                        <small>{formatCurrency(item.precio)}</small>
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputMode="numeric"
+                        value={quantities[item.id] ?? ''}
+                        onChange={(event) => updateQuantity(item.id, event.target.value)}
+                        disabled={isSubmitting}
+                        aria-label={`Cantidad para ${item.nombre}`}
+                      />
+                    </label>
+                  ))}
+                </div>
+                {fieldErrors.items ? <span className="field__error">{fieldErrors.items}</span> : null}
+              </section>
 
-              <label className="field" htmlFor="manual-sale-observations">
-                <span className="field__label">Observaciones</span>
-                <textarea
-                  id="manual-sale-observations"
-                  className="input manual-sale-form__textarea"
-                  name="observaciones"
-                  rows="5"
-                  placeholder="Ej. Venta registrada directamente en mostrador."
-                  value={form.observaciones}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                />
-                {fieldErrors.observaciones ? (
-                  <span className="field__error">{fieldErrors.observaciones}</span>
-                ) : (
-                  <span className="manual-sale-form__counter">Campo opcional</span>
-                )}
-              </label>
-
-              <ErrorMessage title="No se pudo guardar" message={error} />
-            </section>
-
-            <aside className="manual-sale-total-card">
-              <span>Total a registrar</span>
-              <strong>{currencyFormatter.format(totalPreview)}</strong>
-              <p>El importe se enviará como venta manual y no se asociará a un pedido.</p>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Guardando venta...' : 'Guardar registro'}
-              </Button>
-            </aside>
-          </form>
+              <aside className="manual-sale-total-card">
+                <span>Total estimado</span>
+                <strong>{formatCurrency(totalPreview)}</strong>
+                <p>Vista previa; el total persistido lo calcula el backend.</p>
+                <Button type="submit" disabled={isSubmitting || !selectedItems.length}>
+                  {isSubmitting ? 'Guardando venta...' : 'Guardar registro'}
+                </Button>
+              </aside>
+            </form>
+          ) : null}
         </div>
       </main>
 

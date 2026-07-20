@@ -34,6 +34,20 @@ function totalFromItems(items) {
   return items.reduce((total, item) => total + item.subtotal, 0);
 }
 
+function CartItemMedia({ item }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(item.imagenUrl) && !imageFailed;
+
+  return (
+    <span className={`cart-item__media ${hasImage ? 'cart-item__media--image' : ''}`.trim()} aria-hidden="true">
+      {hasImage ? (
+        <img src={item.imagenUrl} alt="" onError={() => setImageFailed(true)} />
+      ) : (
+        <Utensils size={28} strokeWidth={1.8} />
+      )}
+    </span>
+  );
+}
 function CheckoutConfirmation({ order, onClose, returnFocusRef, fallbackFocusRef }) {
   const panelRef = useRef(null);
 
@@ -288,9 +302,7 @@ export function CartPage() {
 
               return (
                 <article className="cart-item" key={item.id}>
-                  <span className="cart-item__media" aria-hidden="true">
-                    <Utensils size={28} strokeWidth={1.8} />
-                  </span>
+                  <CartItemMedia item={item} />
                   <div className="cart-item__info">
                     <h2>{item.nombre}</h2>
                     <span>{formatCurrency(item.precioUnitario)} por unidad</span>

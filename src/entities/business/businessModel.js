@@ -24,6 +24,30 @@ export function normalizeBusinessStatus(status) {
   };
 }
 
+export function normalizeBusinessConfiguration(configuration) {
+  if (!configuration) {
+    return {
+      nombreFonda: 'PuraVida',
+      logoUrl: null,
+      direccion: '',
+      horarios: '',
+      telefono: '',
+      correo: '',
+      actualizadoEn: null,
+    };
+  }
+
+  return {
+    nombreFonda: configuration.nombreFonda || 'PuraVida',
+    logoUrl: configuration.logoUrl || null,
+    direccion: configuration.direccion || '',
+    horarios: configuration.horarios || '',
+    telefono: configuration.telefono || '',
+    correo: configuration.correo || '',
+    actualizadoEn: configuration.actualizadoEn || null,
+  };
+}
+
 export function getBusinessStatusLabel(status) {
   const normalizedStatus = normalizeBusinessStatus(status);
 

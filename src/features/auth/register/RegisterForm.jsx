@@ -71,7 +71,7 @@ export function RegisterForm() {
         required
       />
       <Input
-        label="Telefono"
+        label="Teléfono"
         name="telefono"
         type="tel"
         autoComplete="tel"
@@ -80,7 +80,7 @@ export function RegisterForm() {
         onChange={updateField}
       />
       <Input
-        label="Password"
+        label="Contraseña"
         name="password"
         type="password"
         autoComplete="new-password"

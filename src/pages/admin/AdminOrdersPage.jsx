@@ -1,376 +1,667 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Bell,
-  ClipboardList,
-  Search,
-  Settings,
-  X,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   acceptAdminOrder,
+  cancelAdminOrder,
   completeAdminOrder,
+  getAdminOrder,
   getAdminOrders,
-  rejectAdminOrder,
+  rejectAdminOrder
 } from '../../entities/orders/orderApi.js';
-import { getApiMessage } from '../../shared/api/apiResponse.js';
+import {
+  ORDER_REJECTION_CATEGORIES,
+  getOrderRejectionReason
+} from '../../entities/orders/orderModel.js';
+import { getApiErrors, getApiMessage } from '../../shared/api/apiResponse.js';
 import { Button } from '../../shared/ui/Button.jsx';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
 import { Loading } from '../../shared/ui/Loading.jsx';
+import { formatCurrency } from '../../shared/utils/currency.js';
+import { AdminHeaderActions } from './components/AdminHeaderActions.jsx';
 import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
 import { OrderCard } from './components/OrderCard.jsx';
 import './AdminOrdersPage.css';
+import './components/AdminPageHeader.css';
 
-const ORDER_FILTERS = [
-  { value: 'all', label: 'Todos', apiStatus: null },
-  { value: 'pending', label: 'Pendientes', apiStatus: 'pendiente' },
-  { value: 'accepted', label: 'Aceptados', apiStatus: 'aceptado' },
-  { value: 'completed', label: 'Finalizados', apiStatus: 'finalizado' },
-  { value: 'rejected', label: 'Rechazados', apiStatus: 'rechazado' },
+const CURRENT_ORDER_FILTERS = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'pendiente', label: 'Pendientes' },
+  { value: 'aceptado', label: 'Aceptados' },
+  { value: 'finalizado', label: 'Finalizados' },
+  { value: 'rechazado', label: 'Rechazados' },
+  { value: 'cancelado', label: 'Cancelados' }
 ];
 
-function normalizeStatus(status) {
-  const aliases = {
-    pendiente: 'pending',
-    pending: 'pending',
-    aceptado: 'accepted',
-    accepted: 'accepted',
-    finalizado: 'completed',
-    completed: 'completed',
-    rechazado: 'rejected',
-    rejected: 'rejected',
-    cancelado: 'cancelled',
-    cancelled: 'cancelled',
-  };
+const HISTORY_ORDER_FILTERS = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'finalizado', label: 'Finalizados' },
+  { value: 'rechazado', label: 'Rechazados' },
+  { value: 'cancelado', label: 'Cancelados' }
+];
 
-  return aliases[String(status || '').toLowerCase()] || status;
+const STATUS_ALIASES = {
+  pending: 'pendiente',
+  accepted: 'aceptado',
+  completed: 'finalizado',
+  rejected: 'rechazado',
+  cancelled: 'cancelado',
+  canceled: 'cancelado'
+};
+
+function normalizeStatus(status) {
+  const normalized = String(status ?? '').toLowerCase();
+  return STATUS_ALIASES[normalized] ?? normalized;
 }
 
-export function AdminOrdersPage() {
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [updatingOrderId, setUpdatingOrderId] = useState(null);
-  const [rejectOrder, setRejectOrder] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [rejectionReasonError, setRejectionReasonError] = useState('');
+function orderMatchesSearch(order, searchTerm) {
+  if (!searchTerm.trim()) {
+    return true;
+  }
 
-  const loadOrders = useCallback(async ({ showLoading = true } = {}) => {
-    const selectedFilter = ORDER_FILTERS.find((filter) => filter.value === activeFilter);
+  const needle = searchTerm.trim().toLowerCase();
+  return [order.folio, order.clienteNombre, order.clienteTelefono]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(needle));
+}
 
-    if (showLoading) {
-      setIsLoading(true);
-    }
-    setLoadError('');
+function updateOrderInList(orderList, updatedOrder) {
+  return orderList.map((order) => (order.id === updatedOrder.id ? updatedOrder : order));
+}
 
-    try {
-      const nextOrders = await getAdminOrders({ estado: selectedFilter?.apiStatus });
-      setOrders(nextOrders);
-      return true;
-    } catch (error) {
-      setLoadError(getApiMessage(error, 'No se pudieron cargar los pedidos.'));
-      return false;
-    } finally {
-      if (showLoading) {
-        setIsLoading(false);
-      }
-    }
-  }, [activeFilter]);
+function OrderDetailDialog({ order, loading, error, onClose }) {
+  const isOpen = Boolean(order || loading || error);
 
   useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const rejectionReason = getOrderRejectionReason(order);
+
+  return (
+    <div
+      className="dish-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section className="dish-dialog" role="dialog" aria-modal="true" aria-labelledby="order-detail-title">
+        <header className="dish-dialog__header">
+          <div>
+            <p>Detalle del pedido</p>
+            <h2 id="order-detail-title">{order?.folio || 'Consultando pedido'}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Cerrar detalle">
+            <X aria-hidden="true" size={20} />
+          </button>
+        </header>
+
+        {loading ? <Loading message="Consultando pedido..." /> : null}
+        {error ? <ErrorMessage message={error} /> : null}
+        {order ? (
+          <div className="admin-order-detail">
+            <dl>
+              <div>
+                <dt>Cliente</dt>
+                <dd>{order.clienteNombre}</dd>
+              </div>
+              <div>
+                <dt>Teléfono</dt>
+                <dd>{order.clienteTelefono || 'No registrado'}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>{order.estado}</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd>{formatCurrency(order.total)}</dd>
+              </div>
+              {order.tiempoEsperaEstimado ? (
+                <div>
+                  <dt>Tiempo estimado</dt>
+                  <dd>{order.tiempoEsperaEstimado}</dd>
+                </div>
+              ) : null}
+              {order.notas ? (
+                <div>
+                  <dt>Notas</dt>
+                  <dd>{order.notas}</dd>
+                </div>
+              ) : null}
+              {rejectionReason ? (
+                <div>
+                  <dt>Motivo de rechazo</dt>
+                  <dd>{rejectionReason}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div className="admin-order-detail__items">
+              {order.items?.map((item) => (
+                <div key={item.id ?? item.nombre}>
+                  <span>
+                    {item.cantidad} x {item.nombre}
+                  </span>
+                  <strong>{formatCurrency(item.subtotal)}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+export function AdminOrdersPage({ history = false }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = history ? HISTORY_ORDER_FILTERS : CURRENT_ORDER_FILTERS;
+  const [orders, setOrders] = useState([]);
+  const [activeFilter, setActiveFilter] = useState(filters[0].value);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [acceptOrder, setAcceptOrder] = useState(null);
+  const [acceptMinutes, setAcceptMinutes] = useState('25');
+  const [rejectOrder, setRejectOrder] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectCategory, setRejectCategory] = useState(ORDER_REJECTION_CATEGORIES[0].value);
+  const [rejectError, setRejectError] = useState('');
+  const [confirmOrder, setConfirmOrder] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [detailOrder, setDetailOrder] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const detailRequestRef = useRef(0);
+  const suppressedDetailOrderIdRef = useRef(null);
+
+  useEffect(() => {
+    setActiveFilter(filters[0].value);
+    setOrders([]);
+    setSearchTerm('');
     setActionError('');
-    setSuccessMessage('');
+    setActionMessage('');
+  }, [filters, history]);
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const estado = activeFilter === 'todos' ? undefined : activeFilter;
+      const fetched = await getAdminOrders({
+        estado,
+        currentCycleOnly: !history,
+        historyOnly: history
+      });
+      const validOrders = history
+        ? fetched.filter((order) => ['finalizado', 'rechazado', 'cancelado'].includes(normalizeStatus(order.estado)))
+        : fetched;
+      setOrders(validOrders);
+    } catch (err) {
+      setError(getApiMessage(err, 'No se pudieron consultar los pedidos.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [activeFilter, history]);
+
+  useEffect(() => {
     loadOrders();
   }, [loadOrders]);
 
+  const openDetail = useCallback(async (order) => {
+    suppressedDetailOrderIdRef.current = null;
+    const requestId = detailRequestRef.current + 1;
+    detailRequestRef.current = requestId;
+    setDetailOrder(order);
+    setDetailLoading(true);
+    setDetailError('');
+    setSearchParams((params) => {
+      const nextParams = new URLSearchParams(params);
+      nextParams.set('orderId', order.id);
+      return nextParams;
+    });
+    try {
+      const fullOrder = await getAdminOrder(order.id);
+      if (detailRequestRef.current === requestId) {
+        setDetailOrder(fullOrder);
+      }
+    } catch (err) {
+      if (detailRequestRef.current === requestId) {
+        setDetailError(getApiMessage(err, 'No se pudo consultar el detalle del pedido.'));
+      }
+    } finally {
+      if (detailRequestRef.current === requestId) {
+        setDetailLoading(false);
+      }
+    }
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const orderId = searchParams.get('orderId');
+    if (!orderId) {
+      suppressedDetailOrderIdRef.current = null;
+      return;
+    }
+    if (suppressedDetailOrderIdRef.current === String(orderId) || detailOrder?.id === Number(orderId)) {
+      return;
+    }
+    const found = orders.find((order) => String(order.id) === String(orderId));
+    if (found) {
+      openDetail(found);
+    }
+  }, [detailOrder?.id, openDetail, orders, searchParams]);
+
+  const closeDetail = useCallback(() => {
+    const closingOrderId = detailOrder?.id ?? searchParams.get('orderId');
+    if (closingOrderId != null) {
+      suppressedDetailOrderIdRef.current = String(closingOrderId);
+    }
+    detailRequestRef.current += 1;
+    setDetailOrder(null);
+    setDetailLoading(false);
+    setDetailError('');
+    setSearchParams((params) => {
+      const nextParams = new URLSearchParams(params);
+      nextParams.delete('orderId');
+      return nextParams;
+    });
+  }, [detailOrder?.id, searchParams, setSearchParams]);
+
   const visibleOrders = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLocaleLowerCase('es-MX');
-
     return orders.filter((order) => {
-      const matchesStatus =
-        activeFilter === 'all' || normalizeStatus(order.status) === activeFilter;
-      const searchableText = [order.customerName, order.id]
-        .filter(Boolean)
-        .join(' ')
-        .toLocaleLowerCase('es-MX');
-      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
-
-      return matchesStatus && matchesSearch;
+      const matchesFilter = activeFilter === 'todos' || normalizeStatus(order.estado) === activeFilter;
+      return matchesFilter && orderMatchesSearch(order, searchTerm);
     });
   }, [activeFilter, orders, searchTerm]);
 
-  async function performAction(order, action, success) {
-    setUpdatingOrderId(order.id);
+  async function performOrderAction(action, successMessage) {
+    setIsSubmitting(true);
     setActionError('');
-    setSuccessMessage('');
-
+    setActionMessage('');
     try {
-      await action();
-      const refreshed = await loadOrders({ showLoading: false });
-      setSuccessMessage(
-        refreshed
-          ? success
-          : `${success} No fue posible refrescar el listado automáticamente.`,
-      );
-      return true;
-    } catch (error) {
-      setActionError(getApiMessage(error, 'No se pudo actualizar el pedido.'));
-      return false;
-    } finally {
-      setUpdatingOrderId(null);
-    }
-  }
-
-  async function handleAccept(order) {
-    await performAction(
-      order,
-      () => acceptAdminOrder(order.id),
-      `Pedido #${order.id} aceptado correctamente.`,
-    );
-  }
-
-  function openRejectDialog(order) {
-    setRejectOrder(order);
-    setRejectionReason('');
-    setRejectionReasonError('');
-    setActionError('');
-  }
-
-  function closeRejectDialog() {
-    if (updatingOrderId !== null) {
-      return;
-    }
-
-    setRejectOrder(null);
-    setRejectionReason('');
-    setRejectionReasonError('');
-  }
-
-  async function handleReject(event) {
-    event.preventDefault();
-    const normalizedReason = rejectionReason.trim();
-
-    if (!normalizedReason) {
-      setRejectionReasonError('El motivo de rechazo es obligatorio.');
-      return;
-    }
-
-    setRejectionReasonError('');
-    const rejected = await performAction(
-      rejectOrder,
-      () => rejectAdminOrder(rejectOrder.id, normalizedReason),
-      `Pedido #${rejectOrder.id} rechazado correctamente.`,
-    );
-
-    if (rejected) {
+      const updatedOrder = await action();
+      setOrders((current) => updateOrderInList(current, updatedOrder));
+      setDetailOrder((current) => (current?.id === updatedOrder.id ? updatedOrder : current));
+      setActionMessage(successMessage);
+      setAcceptOrder(null);
       setRejectOrder(null);
-      setRejectionReason('');
+      setConfirmOrder(null);
+      setConfirmAction(null);
+    } catch (err) {
+      setActionError(getApiMessage(err, 'No se pudo actualizar el pedido.'));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  async function handleComplete(order) {
-    await performAction(
-      order,
-      () => completeAdminOrder(order.id),
-      `Pedido #${order.id} finalizado correctamente.`,
+  const openAcceptDialog = (order) => {
+    setAcceptOrder(order);
+    setAcceptMinutes(order.tiempoEsperaEstimado ? String(order.tiempoEsperaEstimado) : '25');
+    setActionError('');
+  };
+
+  const handleAccept = () => {
+    const minutes = Number(acceptMinutes);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      setActionError('Captura un tiempo estimado válido en minutos.');
+      return;
+    }
+    performOrderAction(
+      () => acceptAdminOrder(acceptOrder.id, String(minutes) + ' minutos'),
+      `Pedido ${acceptOrder.folio || `#${acceptOrder.id}`} aceptado.`
     );
-  }
+  };
+
+  const openRejectDialog = (order) => {
+    setRejectOrder(order);
+    setRejectReason('');
+    setRejectCategory(ORDER_REJECTION_CATEGORIES[0].value);
+    setRejectError('');
+    setActionError('');
+  };
+
+  const closeRejectDialog = () => {
+    setRejectOrder(null);
+    setRejectReason('');
+    setRejectCategory(ORDER_REJECTION_CATEGORIES[0].value);
+    setRejectError('');
+  };
+
+  const handleReject = async () => {
+    const trimmedReason = rejectReason.trim();
+    setRejectError('');
+    setActionError('');
+    setActionMessage('');
+
+    if (!rejectCategory) {
+      setRejectError('Selecciona una categoría de rechazo.');
+      return;
+    }
+
+    if (rejectCategory === 'otro' && !trimmedReason) {
+      setRejectError('Escribe el motivo del rechazo.');
+      return;
+    }
+
+    const payload = { categoriaRechazo: rejectCategory };
+    if (rejectCategory === 'otro') {
+      payload.motivoRechazo = trimmedReason;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const updatedOrder = await rejectAdminOrder(rejectOrder.id, payload);
+      setOrders((current) => updateOrderInList(current, updatedOrder));
+      setDetailOrder((current) => (current?.id === updatedOrder.id ? updatedOrder : current));
+      setActionMessage(`Pedido ${rejectOrder.folio || `#${rejectOrder.id}`} rechazado.`);
+      closeRejectDialog();
+    } catch (err) {
+      const apiErrors = getApiErrors(err);
+      setRejectError(
+        apiErrors.motivoRechazo
+          || apiErrors.categoriaRechazo
+          || getApiMessage(err, 'No se pudo rechazar el pedido.')
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openConfirmDialog = (order, action) => {
+    setConfirmOrder(order);
+    setConfirmAction(action);
+    setActionError('');
+  };
+
+  const handleConfirm = () => {
+    if (!confirmOrder || !confirmAction) {
+      return;
+    }
+    if (confirmAction === 'complete') {
+      performOrderAction(
+        () => completeAdminOrder(confirmOrder.id),
+        `Pedido ${confirmOrder.folio || `#${confirmOrder.id}`} finalizado.`
+      );
+      return;
+    }
+    performOrderAction(
+      () => cancelAdminOrder(confirmOrder.id),
+      `Pedido ${confirmOrder.folio || `#${confirmOrder.id}`} cancelado.`
+    );
+  };
+
+  const headerCopy = history
+    ? {
+        eyebrow: 'HISTORIAL',
+        title: 'Historial de pedidos',
+        subtitle: 'Consulta pedidos finalizados, rechazados y cancelados de jornadas anteriores.'
+      }
+    : {
+        eyebrow: 'PEDIDOS',
+        title: 'Gestión de pedidos',
+        subtitle: 'Gestiona únicamente los pedidos de la jornada abierta actual.'
+      };
 
   return (
     <div className="admin-orders-page">
       <AdminWorkspaceSidebar activePath="/admin/pedidos" />
-
       <main className="admin-orders-page__main">
         <header className="admin-orders-page__header">
-          <div className="admin-orders-page__title">
-            <span className="admin-orders-page__heading-icon" aria-hidden="true">
-              <ClipboardList size={28} />
-            </span>
-            <div>
-              <p>Operación</p>
-              <h1>Gestión de pedidos</h1>
-              <span>Consulta y administra los pedidos entrantes de PuraVida.</span>
-            </div>
+          <div>
+            <p className="admin-page-header__eyebrow">{headerCopy.eyebrow}</p>
+            <h1 className="admin-page-header__title">{headerCopy.title}</h1>
+            <span className="admin-page-header__subtitle">{headerCopy.subtitle}</span>
           </div>
+          <div className="admin-orders-page__actions">
+            <AdminHeaderActions />
+          </div>
+        </header>
 
+        <section className="admin-orders-page__content">
           <div className="admin-orders-page__topbar">
             <label className="admin-orders-search">
-              <Search size={19} strokeWidth={2} aria-hidden="true" />
-              <span className="admin-orders-search__label">Buscar pedidos</span>
+              <Search aria-hidden="true" size={18} />
+              <span className="admin-orders-search__label">Buscar pedido</span>
               <input
                 type="search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Buscar pedidos..."
+                placeholder="Folio, cliente o teléfono"
               />
             </label>
-            <button type="button" className="admin-orders-utility" disabled title="Próximamente">
-              <Bell size={21} strokeWidth={2} aria-hidden="true" />
-              <span className="admin-orders-utility__label">Notificaciones</span>
-            </button>
-            <button type="button" className="admin-orders-utility" disabled title="Próximamente">
-              <Settings size={21} strokeWidth={2} aria-hidden="true" />
-              <span className="admin-orders-utility__label">Configuración</span>
-            </button>
+            <div className="admin-orders-toolbar__actions">
+              {history ? (
+                <Link to="/admin/pedidos" className="button button--secondary button--md admin-orders-history-link">
+                  Pedidos actuales
+                </Link>
+              ) : (
+                <Link to="/admin/pedidos/history" className="button button--secondary button--md admin-orders-history-link">
+                  Historial de pedidos
+                </Link>
+              )}
+            </div>
           </div>
-        </header>
 
-        <div className="admin-orders-page__content">
-          <section className="admin-orders-toolbar" aria-label="Herramientas de pedidos">
-            <div>
-              <span>Vista actual</span>
-              <h2>Pedidos registrados</h2>
-              <p>Filtra la bandeja por el estado operativo de cada pedido.</p>
-            </div>
-            <div className="admin-orders-filters" aria-label="Filtrar pedidos por estado">
-              {ORDER_FILTERS.map((filter) => (
-                <button
-                  type="button"
-                  className={`admin-orders-filter ${activeFilter === filter.value ? 'admin-orders-filter--active' : ''}`.trim()}
-                  aria-pressed={activeFilter === filter.value}
-                  onClick={() => setActiveFilter(filter.value)}
-                  disabled={updatingOrderId !== null}
-                  key={filter.value}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {isLoading ? <Loading label="Cargando pedidos..." /> : null}
-          {!isLoading ? <ErrorMessage title="Pedidos no disponibles" message={loadError} /> : null}
-          <ErrorMessage title="No se pudo actualizar el pedido" message={actionError} />
-          {successMessage ? (
-            <div className="message message--success admin-orders-feedback" role="status">
-              {successMessage}
-            </div>
-          ) : null}
-
-          {!isLoading && loadError ? (
-            <div className="admin-orders-retry">
-              <Button variant="secondary" onClick={() => loadOrders()}>
-                Reintentar
-              </Button>
-            </div>
-          ) : null}
-
-          {!isLoading && !loadError && visibleOrders.length ? (
-            <section className="admin-orders-grid" aria-label="Listado de pedidos">
-              {visibleOrders.map((order) => (
-                <OrderCard
-                  order={order}
-                  actionsAvailable={updatingOrderId === null}
-                  isUpdating={updatingOrderId === order.id}
-                  onAccept={handleAccept}
-                  onReject={openRejectDialog}
-                  onComplete={handleComplete}
-                  key={order.id}
-                />
-              ))}
-            </section>
-          ) : null}
-
-          {!isLoading && !loadError && !visibleOrders.length ? (
-            <section className="admin-orders-empty" aria-label="Estado de pedidos">
-              <EmptyState
-                title={orders.length ? 'Sin coincidencias' : 'No hay pedidos'}
-                message={
-                  orders.length
-                    ? 'No se encontraron pedidos con la búsqueda actual.'
-                    : 'No hay pedidos registrados para el estado seleccionado.'
-                }
-              />
-            </section>
-          ) : null}
-
-          <p className="admin-orders-page__notice">
-            Los pedidos pendientes pueden aceptarse o rechazarse. Los pedidos aceptados pueden
-            finalizarse cuando conservan su venta asociada.
-          </p>
+        <div className="admin-orders-filters" role="group" aria-label="Filtros de pedidos">
+          {filters.map((filter) => (
+            <button
+              type="button"
+              key={filter.value}
+              className={`admin-orders-filter ${activeFilter === filter.value ? 'admin-orders-filter--active' : ''}`}
+              onClick={() => setActiveFilter(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
         </div>
+
+        {actionError ? <ErrorMessage message={actionError} /> : null}
+        {actionMessage ? <p className="admin-orders-page__notice">{actionMessage}</p> : null}
+        {error ? <ErrorMessage message={error} /> : null}
+
+        {loading ? (
+          <Loading message="Consultando pedidos..." />
+        ) : visibleOrders.length ? (
+          <section className="admin-orders-grid" aria-label="Listado de pedidos">
+            {visibleOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onAccept={openAcceptDialog}
+                onReject={openRejectDialog}
+                onComplete={(selectedOrder) => openConfirmDialog(selectedOrder, 'complete')}
+                onCancel={(selectedOrder) => openConfirmDialog(selectedOrder, 'cancel')}
+                onView={openDetail}
+              />
+            ))}
+          </section>
+        ) : (
+          <div className="admin-orders-empty">
+            <EmptyState
+              title={history ? 'Sin pedidos históricos' : 'Sin pedidos actuales'}
+              description={
+                history
+                  ? 'Los pedidos finalizados, rechazados o cancelados aparecerán aquí.'
+                  : 'Cuando la fonda esté cerrada o la jornada inicie sin pedidos, esta vista permanecerá vacía.'
+              }
+            />
+          </div>
+        )}
+        </section>
       </main>
 
-      {rejectOrder ? (
-        <div
-          className="admin-order-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeRejectDialog();
-            }
-          }}
-        >
-          <section
-            className="admin-order-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="reject-order-title"
-          >
-            <header className="admin-order-dialog__header">
+      {acceptOrder ? (
+        <div className="dish-dialog-backdrop" role="presentation">
+          <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="accept-order-title">
+            <header className="dish-dialog__header">
               <div>
-                <p>Pedido #{rejectOrder.id}</p>
-                <h2 id="reject-order-title">Rechazar pedido</h2>
+                <p>Aceptar pedido</p>
+                <h2 id="accept-order-title">{acceptOrder.folio || `#${acceptOrder.id}`}</h2>
               </div>
-              <button
-                type="button"
-                onClick={closeRejectDialog}
-                disabled={updatingOrderId !== null}
-                aria-label="Cerrar"
-              >
-                <X size={21} aria-hidden="true" />
+              <button type="button" onClick={() => setAcceptOrder(null)} aria-label="Cerrar diálogo" disabled={isSubmitting}>
+                <X aria-hidden="true" size={20} />
               </button>
             </header>
-
-            <ErrorMessage title="No se pudo rechazar el pedido" message={actionError} />
-
-            <form className="admin-order-reject-form" onSubmit={handleReject}>
-              <label className="field" htmlFor="rejection-reason">
-                <span className="field__label">Motivo de rechazo</span>
-                <textarea
-                  id="rejection-reason"
-                  className="textarea"
-                  value={rejectionReason}
-                  onChange={(event) => {
-                    setRejectionReason(event.target.value);
-                    if (rejectionReasonError) setRejectionReasonError('');
-                  }}
-                  disabled={updatingOrderId !== null}
-                  aria-invalid={rejectionReasonError ? 'true' : undefined}
-                  aria-describedby={rejectionReasonError ? 'rejection-reason-error' : undefined}
-                  autoFocus
+            <form
+              className="dish-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleAccept();
+              }}
+            >
+              <label>
+                Tiempo estimado para recoger (minutos)
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={acceptMinutes}
+                  onChange={(event) => setAcceptMinutes(event.target.value)}
+                  disabled={isSubmitting}
                 />
-                {rejectionReasonError ? (
-                  <span className="field__error" id="rejection-reason-error">
-                    {rejectionReasonError}
-                  </span>
-                ) : null}
               </label>
-
-              <div className="admin-order-dialog__actions">
-                <Button
-                  variant="secondary"
-                  onClick={closeRejectDialog}
-                  disabled={updatingOrderId !== null}
-                >
+              <div className="dish-dialog__actions">
+                <Button type="button" variant="secondary" onClick={() => setAcceptOrder(null)} disabled={isSubmitting}>
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  variant="danger"
-                  disabled={updatingOrderId !== null}
-                >
-                  {updatingOrderId !== null ? 'Rechazando...' : 'Confirmar rechazo'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Aceptando...' : 'Aceptar pedido'}
                 </Button>
               </div>
             </form>
           </section>
         </div>
       ) : null}
+
+      {rejectOrder ? (
+        <div className="dish-dialog-backdrop" role="presentation">
+          <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="reject-order-title">
+            <header className="dish-dialog__header">
+              <div>
+                <p>Rechazar pedido</p>
+                <h2 id="reject-order-title">{rejectOrder.folio || `#${rejectOrder.id}`}</h2>
+              </div>
+              <button type="button" onClick={closeRejectDialog} aria-label="Cerrar diálogo" disabled={isSubmitting}>
+                <X aria-hidden="true" size={20} />
+              </button>
+            </header>
+            <form
+              className="dish-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleReject();
+              }}
+            >
+              <label>
+                Categoría
+                <select
+                  className="dish-form__select"
+                  value={rejectCategory}
+                  onChange={(event) => {
+                    const nextCategory = event.target.value;
+                    setRejectCategory(nextCategory);
+                    setRejectError('');
+                    setActionError('');
+                    if (nextCategory !== 'otro') {
+                      setRejectReason('');
+                    }
+                  }}
+                  disabled={isSubmitting}
+                >
+                  {ORDER_REJECTION_CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {rejectCategory === 'otro' ? (
+                <label>
+                  Motivo
+                  <textarea
+                    className="textarea"
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(event) => {
+                      setRejectReason(event.target.value);
+                      setRejectError('');
+                    }}
+                    placeholder="Explica el motivo para conservar el historial"
+                    disabled={isSubmitting}
+                    aria-invalid={Boolean(rejectError)}
+                  />
+                </label>
+              ) : null}
+              {rejectError ? <ErrorMessage message={rejectError} /> : null}
+              <div className="dish-dialog__actions">
+                <Button type="button" variant="secondary" onClick={closeRejectDialog} disabled={isSubmitting}>
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="danger" disabled={isSubmitting}>
+                  {isSubmitting ? 'Rechazando...' : 'Rechazar pedido'}
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {confirmOrder ? (
+        <div className="dish-dialog-backdrop" role="presentation">
+          <section className="dish-dialog dish-dialog--compact" role="dialog" aria-modal="true" aria-labelledby="confirm-order-title">
+            <header className="dish-dialog__header">
+              <div>
+                <p>{confirmAction === 'complete' ? 'Finalizar pedido' : 'Cancelar pedido'}</p>
+                <h2 id="confirm-order-title">{confirmOrder.folio || `#${confirmOrder.id}`}</h2>
+              </div>
+              <button type="button" onClick={() => setConfirmOrder(null)} aria-label="Cerrar diálogo" disabled={isSubmitting}>
+                <X aria-hidden="true" size={20} />
+              </button>
+            </header>
+            <div className="dish-dialog-result">
+              <p>
+                {confirmAction === 'complete'
+                  ? 'El pedido se marcará como finalizado y quedará listo para ventas y reportes.'
+                  : 'El pedido aceptado se cancelará sin crear una venta nueva.'}
+              </p>
+              <div className="dish-dialog-result__actions">
+                <Button type="button" variant="secondary" onClick={() => setConfirmOrder(null)} disabled={isSubmitting}>
+                  Volver
+                </Button>
+                <Button type="button" onClick={handleConfirm} disabled={isSubmitting}>
+                  {isSubmitting ? 'Guardando...' : confirmAction === 'complete' ? 'Finalizar' : 'Cancelar pedido'}
+                </Button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      <OrderDetailDialog order={detailOrder} loading={detailLoading} error={detailError} onClose={closeDetail} />
     </div>
   );
 }

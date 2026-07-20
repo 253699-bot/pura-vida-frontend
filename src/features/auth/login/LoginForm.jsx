@@ -53,7 +53,7 @@ export function LoginForm() {
 
       navigate(target, { replace: true });
     } catch (apiError) {
-      setError(getApiMessage(apiError, 'No se pudo iniciar sesion.'));
+      setError(getApiMessage(apiError, 'No se pudo iniciar sesión.'));
       setFieldErrors(getApiErrors(apiError));
     } finally {
       setIsSubmitting(false);
@@ -74,7 +74,7 @@ export function LoginForm() {
         required
       />
       <Input
-        label="Password"
+        label="Contraseña"
         name="password"
         type="password"
         autoComplete="current-password"
