@@ -427,7 +427,7 @@ export function LandingPage() {
           <section>
             <h2>{businessName}</h2>
             <p>Sabor local y fresco.</p>
-            <p>(c) 2024 {businessName}. Sabor local y fresco.</p>
+            <p>(c) 2026 {businessName}. Sabor local y fresco.</p>
           </section>
           <section>
             <h2>Contacto</h2>

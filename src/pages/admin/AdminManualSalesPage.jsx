@@ -173,7 +173,7 @@ export function AdminManualSalesPage() {
                 <div className="manual-sale-form__section-title">
                   <ClipboardList size={22} aria-hidden="true" />
                   <div>
-                    <h2>Partidas de la venta</h2>
+                    <h2>Registro de ventas</h2>
                     <p>Indica cantidades para los platillos vendidos en mostrador.</p>
                   </div>
                 </div>

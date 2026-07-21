@@ -118,6 +118,15 @@ function SummaryCard({ icon: Icon, label, value, tone = 'green', detail }) {
   );
 }
 
+function ChartFrame({ xLabel, yLabel, children, className = '' }) {
+  return (
+    <div className={`statistics-chart-frame ${className}`.trim()}>
+      <span className="statistics-axis-title statistics-axis-title--y">{yLabel}</span>
+      <div className="statistics-chart-frame__plot">{children}</div>
+      <span className="statistics-axis-title statistics-axis-title--x">{xLabel}</span>
+    </div>
+  );
+}
 function SalesBarsPanel({ title, eyebrow, items, labelForItem, metric = 'amount', scrollable = false }) {
   const getMetricValue = (item) => (metric === 'count' ? item.count : item.total);
   const maximum = Math.max(...items.map(getMetricValue), 0);
@@ -126,6 +135,41 @@ function SalesBarsPanel({ title, eyebrow, items, labelForItem, metric = 'amount'
   const formatAuxiliaryValue = (item) => (metric === 'count'
     ? (item.count === 1 ? 'venta' : 'ventas')
     : `${item.count} ventas`);
+  const xAxisLabel = title === 'Ventas de la semana' ? 'Días de la semana' : 'Periodo';
+  const yAxisLabel = metric === 'count' ? 'Cantidad de ventas' : 'Total vendido ($)';
+  const chartMinWidth = scrollable ? Math.max(420, items.length * 66) : null;
+  const chartStyle = scrollable
+    ? {
+        minWidth: `max(100%, ${chartMinWidth}px)`,
+        gridTemplateColumns: `repeat(${items.length}, minmax(58px, 1fr))`,
+      }
+    : undefined;
+  const chart = (
+    <div className={`statistics-sales-chart ${scrollable ? 'statistics-sales-chart--scrollable' : ''}`.trim()} style={chartStyle} aria-label={title}>
+      {items.map((item) => {
+        const label = labelForItem(item);
+        const value = getMetricValue(item);
+        const readable = metric === 'count'
+          ? `${label}: ${item.count} ventas`
+          : `${label}: ${formatCurrency(item.total)} en ${item.count} ventas`;
+
+        return (
+          <div className="statistics-sales-chart__item" key={`${label}-${item.from ?? item.date ?? item.hour}`} title={readable}>
+            <strong>{formatMetricValue(item)}</strong>
+            <span className="statistics-sales-chart__track" aria-hidden="true">
+              <span
+                className="statistics-sales-chart__bar"
+                style={{ height: `${getPercent(value, maximum)}%` }}
+              />
+            </span>
+            <small>{label}</small>
+            <em>{formatAuxiliaryValue(item)}</em>
+            <span className="statistics-sales-chart__sr">{readable}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <section className="statistics-panel" aria-labelledby={`${title.replace(/\s+/g, '-').toLowerCase()}-title`}>
@@ -136,32 +180,13 @@ function SalesBarsPanel({ title, eyebrow, items, labelForItem, metric = 'amount'
         </div>
       </div>
       {hasData ? (
-        <div className={scrollable ? 'statistics-sales-chart-scroll' : undefined}>
-          <div className={`statistics-sales-chart ${scrollable ? 'statistics-sales-chart--scrollable' : ''}`.trim()} aria-label={title}>
-            {items.map((item) => {
-              const label = labelForItem(item);
-              const value = getMetricValue(item);
-              const readable = metric === 'count'
-                ? `${label}: ${item.count} ventas`
-                : `${label}: ${formatCurrency(item.total)} en ${item.count} ventas`;
-
-              return (
-                <div className="statistics-sales-chart__item" key={`${label}-${item.from ?? item.date ?? item.hour}`} title={readable}>
-                  <strong>{formatMetricValue(item)}</strong>
-                  <span className="statistics-sales-chart__track" aria-hidden="true">
-                    <span
-                      className="statistics-sales-chart__bar"
-                      style={{ height: `${getPercent(value, maximum)}%` }}
-                    />
-                  </span>
-                  <small>{label}</small>
-                  <em>{formatAuxiliaryValue(item)}</em>
-                  <span className="statistics-sales-chart__sr">{readable}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <ChartFrame xLabel={xAxisLabel} yLabel={yAxisLabel}>
+          {scrollable ? (
+            <div className="statistics-sales-chart-scroll">
+              {chart}
+            </div>
+          ) : chart}
+        </ChartFrame>
       ) : (
         <EmptyState title="Sin ventas" message="No hay ventas válidas para graficar en este periodo." />
       )}
@@ -173,13 +198,21 @@ function SalesLinePanel({ items }) {
   const maximum = Math.max(...items.map((item) => item.total), 0);
   const hasData = items.some((item) => item.total > 0);
   const width = 760;
-  const height = 220;
-  const pointGap = items.length > 1 ? width / (items.length - 1) : width;
-  const points = items.map((item, index) => {
-    const x = items.length > 1 ? index * pointGap : width / 2;
-    const y = maximum ? height - ((item.total / maximum) * (height - 18)) : height;
-    return `${x},${y}`;
-  }).join(' ');
+  const height = 300;
+  const margin = { top: 24, right: 30, bottom: 64, left: 78 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const plotBottom = margin.top + plotHeight;
+  const plotRight = margin.left + plotWidth;
+  const pointGap = items.length > 1 ? plotWidth / (items.length - 1) : plotWidth;
+  const maxIndex = items.reduce((bestIndex, item, index) => (
+    item.total > items[bestIndex].total ? index : bestIndex
+  ), 0);
+  const labelIndexes = new Set([0, Math.max(items.length - 1, 0), maxIndex]);
+  const gridTicks = [0, 0.25, 0.5, 0.75, 1];
+  const getX = (index) => (items.length > 1 ? margin.left + (index * pointGap) : margin.left + (plotWidth / 2));
+  const getY = (total) => (maximum ? plotBottom - ((total / maximum) * plotHeight) : plotBottom);
+  const points = items.map((item, index) => `${getX(index)},${getY(item.total)}`).join(' ');
 
   return (
     <section className="statistics-panel statistics-panel--wide" aria-labelledby="monthly-sales-trend-title">
@@ -191,16 +224,36 @@ function SalesLinePanel({ items }) {
       </div>
       {hasData ? (
         <div className="statistics-line-chart-scroll">
-          <svg className="statistics-line-chart" viewBox={`0 0 ${width} ${height + 42}`} role="img" aria-label="Total vendido por día del mes">
+          <svg className="statistics-line-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="monthly-sales-trend-title monthly-sales-trend-desc">
+            <desc id="monthly-sales-trend-desc">Línea de total vendido por día del mes con cuadrícula y títulos de ejes.</desc>
+            <g aria-hidden="true">
+              {gridTicks.map((tick) => {
+                const y = plotBottom - (plotHeight * tick);
+                return (
+                  <line
+                    className="statistics-line-chart__grid"
+                    key={tick}
+                    x1={margin.left}
+                    x2={plotRight}
+                    y1={y}
+                    y2={y}
+                  />
+                );
+              })}
+            </g>
+            <line className="statistics-line-chart__axis" x1={margin.left} x2={plotRight} y1={plotBottom} y2={plotBottom} aria-hidden="true" />
+            <line className="statistics-line-chart__axis" x1={margin.left} x2={margin.left} y1={margin.top} y2={plotBottom} aria-hidden="true" />
+            <text className="statistics-line-chart__axis-title" x={(margin.left + plotRight) / 2} y={height - 14} textAnchor="middle">Días del mes</text>
+            <text className="statistics-line-chart__axis-title" x="20" y={(margin.top + plotBottom) / 2} textAnchor="middle" transform={`rotate(-90 20 ${(margin.top + plotBottom) / 2})`}>Total vendido ($)</text>
             <polyline className="statistics-line-chart__line" points={points} fill="none" />
             {items.map((item, index) => {
-              const x = items.length > 1 ? index * pointGap : width / 2;
-              const y = maximum ? height - ((item.total / maximum) * (height - 18)) : height;
+              const x = getX(index);
+              const y = getY(item.total);
               return (
                 <g key={item.date}>
                   <circle cx={x} cy={y} r="4" />
-                  {(index === 0 || index === items.length - 1 || item.total === maximum) ? (
-                    <text x={x} y={height + 28} textAnchor={index === 0 ? 'start' : index === items.length - 1 ? 'end' : 'middle'}>
+                  {labelIndexes.has(index) ? (
+                    <text x={x} y={plotBottom + 24} textAnchor={index === 0 ? 'start' : index === items.length - 1 ? 'end' : 'middle'}>
                       {formatCompactDate(item.date)}
                     </text>
                   ) : null}
@@ -257,22 +310,24 @@ function TopDishesPanel({ items, subtitle = 'Con ventas activas y pedidos finali
           <span className="statistics-panel__subtitle">{subtitle}</span>
         </div>
       </div>
-      <div className="statistics-ranking">
-        {items.length > 0 ? items.map((item, index) => (
-          <div className="statistics-ranking__row" key={item.id || `${item.name}-${index}`}>
-            <span className="statistics-ranking__name" title={item.name}>{item.name}</span>
-            <span className="statistics-ranking__track" aria-hidden="true">
-              <span
-                className={`statistics-ranking__bar statistics-ranking__bar--${Math.min(index + 1, 5)}`}
-                style={{ width: `${getPercent(item.quantity, maximum)}%` }}
-              />
-            </span>
-            <strong>{item.quantity}</strong>
-          </div>
-        )) : (
-          <EmptyState title="Sin platillos vendidos" message="No hay desglose de platillos para este periodo." />
-        )}
-      </div>
+      {items.length > 0 ? (
+        <div className="statistics-ranking">
+            {items.map((item, index) => (
+              <div className="statistics-ranking__row" key={item.id || `${item.name}-${index}`}>
+                <span className="statistics-ranking__name" title={item.name}>{item.name}</span>
+                <span className="statistics-ranking__track" aria-hidden="true">
+                  <span
+                    className={`statistics-ranking__bar statistics-ranking__bar--${Math.min(index + 1, 5)}`}
+                    style={{ width: `${getPercent(item.quantity, maximum)}%` }}
+                  />
+                </span>
+                <strong>{item.quantity}</strong>
+              </div>
+            ))}
+        </div>
+      ) : (
+        <EmptyState title="Sin platillos vendidos" message="No hay desglose de platillos para este periodo." />
+      )}
     </section>
   );
 }
@@ -294,20 +349,22 @@ function OrderStatusPanel({ statuses }) {
           <h2 id="order-status-title">Pedidos por estado</h2>
         </div>
       </div>
-      <div className="statistics-order-chart" aria-label="Distribución de pedidos por estado">
-        {items.map((item) => (
-          <div className="statistics-order-chart__item" key={item.label} title={`${item.label}: ${item.value}`}>
-            <strong>{item.value}</strong>
-            <span className="statistics-order-chart__track" aria-hidden="true">
-              <span
-                className={`statistics-order-chart__bar statistics-order-chart__bar--${item.tone}`}
-                style={{ height: `${getPercent(item.value, maximum)}%` }}
-              />
-            </span>
-            <small>{item.label}</small>
-          </div>
-        ))}
-      </div>
+      <ChartFrame xLabel="Estado del pedido" yLabel="Cantidad de pedidos">
+        <div className="statistics-order-chart" aria-label="Distribución de pedidos por estado">
+          {items.map((item) => (
+            <div className="statistics-order-chart__item" key={item.label} title={`${item.label}: ${item.value}`}>
+              <strong>{item.value}</strong>
+              <span className="statistics-order-chart__track" aria-hidden="true">
+                <span
+                  className={`statistics-order-chart__bar statistics-order-chart__bar--${item.tone}`}
+                  style={{ height: `${getPercent(item.value, maximum)}%` }}
+                />
+              </span>
+              <small>{item.label}</small>
+            </div>
+          ))}
+        </div>
+      </ChartFrame>
     </section>
   );
 }
@@ -325,15 +382,15 @@ function OrdersByWeekPanel({ items }) {
         </div>
       </div>
       <div className="statistics-week-bars">
-        {items.map((item) => (
-          <article key={item.week}>
-            <strong>{item.count}</strong>
-            <span aria-hidden="true">
-              <span style={{ width: `${getPercent(item.count, maximum)}%` }} />
-            </span>
-            <small>Semana {item.week}</small>
-          </article>
-        ))}
+          {items.map((item) => (
+            <article key={item.week} title={`Semana ${item.week}: ${item.count} pedidos`}>
+              <small>Semana {item.week}</small>
+              <span aria-hidden="true">
+                <span style={{ width: `${getPercent(item.count, maximum)}%` }} />
+              </span>
+              <strong>{item.count}</strong>
+            </article>
+          ))}
       </div>
     </section>
   );
@@ -373,18 +430,18 @@ function SalesSourcesChart({ sales, title = 'Comparación por origen' }) {
       </div>
       {hasData ? (
         <div className="statistics-source-chart">
-          {sources.map((source) => (
-            <article key={source.id}>
-              <div>
-                <strong>{source.label}</strong>
-                <span>{source.count} ventas - {formatCurrency(source.total)} - ticket {formatCurrency(source.average)}</span>
-              </div>
-              <span className="statistics-source-chart__track" aria-hidden="true">
-                <span style={{ width: `${getPercent(source[metric], maximum)}%` }} />
-              </span>
-              <em>{formatMetricValue(source[metric])}</em>
-            </article>
-          ))}
+            {sources.map((source) => (
+              <article key={source.id}>
+                <div>
+                  <strong>{source.label}</strong>
+                  <span>{source.count} ventas - {formatCurrency(source.total)} - ticket {formatCurrency(source.average)}</span>
+                </div>
+                <span className="statistics-source-chart__track" aria-hidden="true">
+                  <span style={{ width: `${getPercent(source[metric], maximum)}%` }} />
+                </span>
+                <em>{formatMetricValue(source[metric])}</em>
+              </article>
+            ))}
         </div>
       ) : (
         <EmptyState title="Sin ventas por origen" message="No hay ventas válidas para comparar en este periodo." />
@@ -414,7 +471,7 @@ function ModeSummary({ mode, statistics }) {
   return (
     <section className="statistics-summary" aria-label={mode === 'week' ? 'Resumen semanal' : 'Resumen del rango'}>
       <SummaryCard icon={Wallet} label={mode === 'week' ? 'Total vendido' : 'Total vendido'} value={formatCurrency(statistics.sales.activeTotal)} tone="orange" />
-      <SummaryCard icon={TrendingUp} label="Cantidad de ventas" value={statistics.sales.activeCount.toLocaleString('es-MX')} detail="Filas válidas en VENTAS" />
+      <SummaryCard icon={TrendingUp} label="Cantidad de ventas" value={statistics.sales.activeCount.toLocaleString('es-MX')}/>
       <SummaryCard icon={ClipboardList} label="Pedidos atendidos" value={statistics.orderStatuses.finalized.toLocaleString('es-MX')} detail="Pedidos finalizados" />
       <SummaryCard icon={Utensils} label="Platillo más pedido" value={primaryDish?.name || 'Sin datos'} detail={primaryDish ? `${primaryDish.quantity} unidades` : null} tone="pink" />
     </section>
@@ -441,6 +498,7 @@ function StatisticsPanels({ mode, statistics }) {
           eyebrow="Agrupación automática"
           items={statistics.salesByPeriod}
           labelForItem={(item) => item.label}
+        scrollable
         />
         <SalesSourcesChart sales={statistics.sales} title="Comparación por origen del rango" />
         <OrderStatusPanel statuses={statistics.orderStatuses} />
