@@ -16,6 +16,23 @@ const DISH_TYPES = [
 
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const PRICE_PATTERN = /^\d+(\.\d{1,2})?$/;
+
+function normalizePriceBase(value) {
+  const rawValue = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+
+  if (!PRICE_PATTERN.test(rawValue)) {
+    return null;
+  }
+
+  const numericValue = Number(rawValue);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null;
+  }
+
+  const [integerPart, fractionPart = ''] = rawValue.split('.');
+  return `${integerPart}.${fractionPart.padEnd(2, '0')}`;
+}
 
 function DialogFrame({ children, titleId, onClose, canClose = true, compact = false }) {
   useEffect(() => {
@@ -57,8 +74,8 @@ function validateDish(values) {
 
   if (values.precioBase === '') {
     errors.precioBase = 'El precio es obligatorio.';
-  } else if (!Number.isFinite(Number(values.precioBase)) || Number(values.precioBase) <= 0) {
-    errors.precioBase = 'El precio debe ser mayor a cero.';
+  } else if (!normalizePriceBase(values.precioBase)) {
+    errors.precioBase = 'El precio debe ser mayor a cero y usar maximo dos decimales.';
   }
 
   return errors;
@@ -143,7 +160,7 @@ function DishForm({ titleId, title, values, setValues, isSubmitting, fieldErrors
           <textarea id={`${titleId}-description`} className="textarea" value={values.descripcion} onChange={(event) => updateValue('descripcion', event.target.value)} disabled={isSubmitting} />
           {fieldErrors.descripcion ? <span className="field__error">{fieldErrors.descripcion}</span> : null}
         </label>
-        <Input label="Precio base ($)" type="number" min="0.01" step="0.01" value={values.precioBase} error={fieldErrors.precioBase} onChange={(event) => updateValue('precioBase', event.target.value)} disabled={isSubmitting} />
+        <Input label="Precio base ($)" type="number" min="0" step="1" inputMode="decimal" value={values.precioBase} error={fieldErrors.precioBase} onChange={(event) => updateValue('precioBase', event.target.value)} onWheel={(event) => { event.preventDefault(); event.currentTarget.blur(); }} disabled={isSubmitting} />
         <DishImageField
           titleId={titleId}
           file={values.imageFile}
@@ -204,11 +221,12 @@ export function CreateDishDialog({ onClose, onCreated }) {
     setIsSubmitting(true);
 
     try {
+      const precioBase = normalizePriceBase(values.precioBase);
       let savedDish = await createDish({
         nombre: values.nombre.trim(),
         descripcion: values.descripcion.trim() || null,
         tipoPlatillo: values.tipoPlatillo,
-        precioBase: Number(values.precioBase),
+        precioBase,
       });
       if (values.imageFile) {
         savedDish = await uploadDishImage(savedDish.id, values.imageFile);
@@ -283,11 +301,12 @@ export function EditDishDialog({ dish, onClose, onUpdated }) {
     setIsSubmitting(true);
 
     try {
+      const precioBase = normalizePriceBase(values.precioBase);
       let updatedDish = await updateDish(dish.id, {
         nombre: values.nombre.trim(),
         descripcion: values.descripcion.trim() || null,
         tipoPlatillo: values.tipoPlatillo,
-        precioBase: Number(values.precioBase),
+        precioBase,
       });
       if (values.imageFile) {
         updatedDish = await uploadDishImage(dish.id, values.imageFile);

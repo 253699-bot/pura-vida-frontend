@@ -300,6 +300,30 @@ function menuPayloadFromIds(_menu, ids) {
   };
 }
 
+function mergeDishIntoMenu(currentMenu, dish, imageVersion) {
+  if (!currentMenu?.items?.length || !dish?.id) {
+    return currentMenu;
+  }
+
+  return {
+    ...currentMenu,
+    items: currentMenu.items.map((item) =>
+      item.platilloId === dish.id
+        ? {
+            ...item,
+            nombre: dish.nombre,
+            descripcion: dish.descripcion,
+            precio: dish.precio,
+            categoria: dish.categoria,
+            tipoPlatillo: dish.tipoPlatillo,
+            imagenUrl: dish.imagenUrl,
+            imagenVersion: dish.imagenVersion ?? dish.actualizadoEn ?? imageVersion ?? item.imagenVersion
+          }
+        : item
+    )
+  };
+}
+
 export function AdminMenuPage() {
   const [menu, setMenu] = useState(null);
   const [dishes, setDishes] = useState([]);
@@ -429,32 +453,16 @@ export function AdminMenuPage() {
   };
 
   const handleDishUpdated = async (dish) => {
-    const imageVersion = Date.now();
+    const imageVersion = dish.actualizadoEn ?? dish.imagenVersion ?? Date.now();
     const nextDish = { ...dish, imagenVersion: imageVersion };
     setDishes((current) => current.map((item) => (item.id === nextDish.id ? nextDish : item)));
-    setMenu((currentMenu) => {
-      if (!currentMenu?.items?.length) {
-        return currentMenu;
-      }
-      return {
-        ...currentMenu,
-        items: currentMenu.items.map((item) =>
-          item.platilloId === nextDish.id
-            ? {
-                ...item,
-                nombre: nextDish.nombre,
-                descripcion: nextDish.descripcion,
-                precio: nextDish.precio,
-                categoria: nextDish.categoria,
-                tipoPlatillo: nextDish.tipoPlatillo,
-                imagenUrl: nextDish.imagenUrl,
-                imagenVersion: imageVersion
-              }
-            : item
-        )
-      };
-    });
-    await Promise.all([loadDishes(), loadMenu()]);
+    setMenu((currentMenu) => mergeDishIntoMenu(currentMenu, nextDish, imageVersion));
+    const [freshDishes, freshMenu] = await Promise.all([loadDishes(), loadMenu()]);
+    const freshDish = freshDishes.find((item) => item.id === nextDish.id) ?? nextDish;
+    const finalVersion = freshDish.actualizadoEn ?? nextDish.imagenVersion ?? imageVersion;
+    const finalDish = { ...freshDish, imagenVersion: finalVersion };
+    setDishes((current) => current.map((item) => (item.id === finalDish.id ? finalDish : item)));
+    setMenu((currentMenu) => mergeDishIntoMenu(freshMenu ?? currentMenu, finalDish, finalVersion));
     closeDishDialog();
   };
 

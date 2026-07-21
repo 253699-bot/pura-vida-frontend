@@ -3,17 +3,21 @@ import { resolveApiAssetUrl } from '../../shared/api/assets.js';
 export function normalizeMenuItem(item = {}) {
   const dish = item.platillo ?? item.dish ?? {};
   const rawImageUrl = dish.imagenUrl ?? dish.imagen_url ?? dish.imageUrl ?? item.imagenUrl ?? item.imageUrl ?? null;
+  const rawPrice = item.precioDia ?? item.precio_dia ?? item.precio ?? item.price
+    ?? dish.precioDia ?? dish.precio_dia ?? dish.precio ?? dish.precioBase ?? dish.price ?? 0;
 
   return {
     id: item.id ?? item.menuItemId ?? item.menu_item_id,
     platilloId: item.platilloId ?? item.dishId ?? dish.id,
     nombre: dish.nombre ?? item.nombre ?? item.name,
     descripcion: dish.descripcion ?? item.descripcion ?? item.description ?? '',
-    precio: Number(dish.precio ?? item.precio ?? item.price ?? 0),
+    precio: Number(rawPrice),
     categoria: dish.categoria ?? item.categoria ?? item.category ?? '',
     tipoPlatillo: dish.tipoPlatillo ?? item.tipoPlatillo ?? item.tipo_platillo ?? item.type ?? '',
     publicado: item.publicado ?? item.published ?? true,
     imagenUrl: resolveApiAssetUrl(rawImageUrl),
+    imagenVersion: item.imagenVersion ?? item.actualizadoEn ?? item.updatedAt
+      ?? dish.imagenVersion ?? dish.actualizadoEn ?? dish.updatedAt ?? null,
     disponible: Boolean(item.disponible ?? item.available ?? true)
   };
 }
