@@ -46,6 +46,7 @@ export function normalizeDish(dish = {}) {
     categoria: dish.categoria ?? dish.category ?? '',
     activo: Boolean(dish.activo ?? dish.active ?? true),
     imagenUrl: resolveApiAssetUrl(rawImageUrl),
+    imagenVersion: dish.imagenVersion ?? dish.actualizadoEn ?? dish.updatedAt ?? null,
     creadoEn: dish.creadoEn ?? dish.createdAt ?? null,
     actualizadoEn: dish.actualizadoEn ?? dish.updatedAt ?? null
   };

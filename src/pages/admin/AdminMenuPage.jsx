@@ -16,6 +16,7 @@ import { CreateDishDialog, EditDishDialog } from '../../features/menu/manage-dis
 import { MenuAvailabilityToggle } from '../../features/menu/update-availability/MenuAvailabilityToggle.jsx';
 import { TodayMenuList } from '../../features/menu/view-today-menu/TodayMenuList.jsx';
 import { getApiMessage } from '../../shared/api/apiResponse.js';
+import { versionAssetUrl } from '../../shared/api/assets.js';
 import { Button } from '../../shared/ui/Button.jsx';
 import { EmptyState } from '../../shared/ui/EmptyState.jsx';
 import { ErrorMessage } from '../../shared/ui/ErrorMessage.jsx';
@@ -25,15 +26,6 @@ import { AdminHeaderActions } from './components/AdminHeaderActions.jsx';
 import { AdminWorkspaceSidebar } from './components/AdminWorkspaceSidebar.jsx';
 import './AdminMenuPage.css';
 import './components/AdminPageHeader.css';
-
-function versionAssetUrl(url, version) {
-  if (!url || !version) {
-    return url;
-  }
-
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}v=${encodeURIComponent(version)}`;
-}
 
 function closureCountsFromError(error) {
   const details = error?.response?.data?.details;
@@ -220,7 +212,8 @@ function BusinessStatusCompactCard({ status, loading, error, onUpdated }) {
 }
 
 function DishCard({ dish, onAddToMenu, onEdit, onDelete, isInMenu, isAdding, isAddDisabled }) {
-  const imageSrc = useMemo(() => versionAssetUrl(dish.imagenUrl, dish.actualizadoEn), [dish.actualizadoEn, dish.imagenUrl]);
+  const imageVersion = dish.imagenVersion ?? dish.actualizadoEn;
+  const imageSrc = useMemo(() => versionAssetUrl(dish.imagenUrl, imageVersion), [dish.imagenUrl, imageVersion]);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -297,30 +290,6 @@ function RemoveMenuItemDialog({ item, onClose, onConfirm, isSubmitting }) {
 function menuPayloadFromIds(_menu, ids) {
   return {
     items: ids.map((platilloId) => ({ platilloId }))
-  };
-}
-
-function mergeDishIntoMenu(currentMenu, dish, imageVersion) {
-  if (!currentMenu?.items?.length || !dish?.id) {
-    return currentMenu;
-  }
-
-  return {
-    ...currentMenu,
-    items: currentMenu.items.map((item) =>
-      item.platilloId === dish.id
-        ? {
-            ...item,
-            nombre: dish.nombre,
-            descripcion: dish.descripcion,
-            precio: dish.precio,
-            categoria: dish.categoria,
-            tipoPlatillo: dish.tipoPlatillo,
-            imagenUrl: dish.imagenUrl,
-            imagenVersion: dish.imagenVersion ?? dish.actualizadoEn ?? imageVersion ?? item.imagenVersion
-          }
-        : item
-    )
   };
 }
 
@@ -456,13 +425,42 @@ export function AdminMenuPage() {
     const imageVersion = dish.actualizadoEn ?? dish.imagenVersion ?? Date.now();
     const nextDish = { ...dish, imagenVersion: imageVersion };
     setDishes((current) => current.map((item) => (item.id === nextDish.id ? nextDish : item)));
-    setMenu((currentMenu) => mergeDishIntoMenu(currentMenu, nextDish, imageVersion));
+    setMenu((currentMenu) => {
+      if (!currentMenu?.items?.length || !nextDish?.id || !nextDish.imagenUrl) {
+        return currentMenu;
+      }
+      return {
+        ...currentMenu,
+        items: currentMenu.items.map((item) => (
+          item.platilloId === nextDish.id
+            ? {
+                ...item,
+                imagenUrl: nextDish.imagenUrl,
+                imagenVersion: nextDish.imagenVersion ?? nextDish.actualizadoEn ?? item.imagenVersion
+              }
+            : item
+        ))
+      };
+    });
     const [freshDishes, freshMenu] = await Promise.all([loadDishes(), loadMenu()]);
     const freshDish = freshDishes.find((item) => item.id === nextDish.id) ?? nextDish;
     const finalVersion = freshDish.actualizadoEn ?? nextDish.imagenVersion ?? imageVersion;
     const finalDish = { ...freshDish, imagenVersion: finalVersion };
     setDishes((current) => current.map((item) => (item.id === finalDish.id ? finalDish : item)));
-    setMenu((currentMenu) => mergeDishIntoMenu(freshMenu ?? currentMenu, finalDish, finalVersion));
+    if (freshMenu) {
+      setMenu({
+        ...freshMenu,
+        items: freshMenu.items.map((item) => (
+          item.platilloId === finalDish.id && finalDish.imagenUrl
+            ? {
+                ...item,
+                imagenUrl: finalDish.imagenUrl,
+                imagenVersion: finalDish.imagenVersion ?? finalDish.actualizadoEn ?? item.imagenVersion
+              }
+            : item
+        ))
+      });
+    }
     closeDishDialog();
   };
 
